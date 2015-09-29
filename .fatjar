@@ -1,0 +1,14 @@
+#Fat Jar Configuration File
+#Wed Sep 23 18:13:37 CST 2015
+onejar.license.required=true
+manifest.classpath=
+manifest.removesigners=true
+onejar.checkbox=false
+jarname=DataBaseClient_fat.jar
+manifest.mergeall=true
+manifest.mainclass=view
+manifest.file=<createnew>
+jarname.isextern=false
+onejar.expand=
+excludes=
+includes=
