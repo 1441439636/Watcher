@@ -76,11 +76,11 @@ private	JLabel bn;
 	}
 	public String getsql() {
 		String sql;
+		if(isAllNone())return "";
 		if(isAngle())
 		{
 			sql=tf1.getText();
 			return "LIKE '"+sql+"'";
-			
 		}
 		else 
 		{

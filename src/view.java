@@ -2,6 +2,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.ResultSet;
@@ -18,39 +19,25 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
-/*
- * 自定义查询保存在服务器 那么查询条件表中必须有账号id 
- * oracle的自增主键我不是很熟悉 一定要给每个表有一个id
- * 
- * 我先把逻辑写下 剩下的就要大大大大大大改
- * 客户端
- */
 public class view extends JFrame {
 	static final String plaf = "com.sun.java.swing.plaf.windows.WindowsLookAndFeel";
-
-	private static final int WIDTH = 600;
-	private static final int HEIGHT = 700;
-	private static final int SELECTHIGHT = 80;
-
 	private JPanel contentPanel;
-	private JScrollPane jsc;
 	private JComboBox<String> table;
 	private JComboBox<String> set;
-	private JButton all;
-	private JButton none;
+	private JButton selectall;
+	private JButton selectnone;
 	private JButton save;
 	private JButton delete;
-	private JButton yes;
-	private JButton out;
+	private JButton confirm;
 	private DatabaseConnect db;
 	private ResultSet rs;
-	ArrayList<String> t = null;
-	ArrayList<String> query = null;
-	private Component[] comp = null;
+	private final setActionListener setlis=new setActionListener();
 	Vector<String> cmbTable;
+	int role_id=0;
+	int account_id=0;
+	int table_id=0;
 	private static final long serialVersionUID = 1L;
 
 	public view() throws Exception {
@@ -59,7 +46,6 @@ public class view extends JFrame {
 			initFrame();
 			addListener();
 			setVisible(true);
-			System.out.println("view");
 		}
 		else
 		{
@@ -67,10 +53,11 @@ public class view extends JFrame {
 					JOptionPane.ERROR_MESSAGE);
 		}	
 	}
+	//从某个配置文件中读到数据库账号密码 
+	// 这里就直接写了
+	//登录 是顺便获取角色id 和账号id
+
 	private Boolean log() {
-		//从某个配置文件中读到数据库账号密码 
-		// 这里就直接写了
-		System.out.println("log");
 		try {
 			db = new DatabaseConnect();
 			if (!db.connect("127.0.0.1:1521", "orcl", "scott", "tiger"))
@@ -81,13 +68,10 @@ public class view extends JFrame {
 			log = new logDialog();
 			
 			if (log.showdia(this, "登录")) {
-				cmbTable = db
-						.logByAccount(log.getUserName(), log.getPassword().toString());
-				for(int i=0;i<cmbTable.size();i++)
-				{
-					System.out.println(cmbTable.get(i));
-				}
-				System.out.println(cmbTable.isEmpty()+" "+cmbTable==null);
+				int[] id = db.logByAccount(log.getUserName(), log.getPassword().toString());
+				if(id==null)return false;
+				role_id=id[0];
+				account_id=id[1];
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -96,240 +80,208 @@ public class view extends JFrame {
 		return true;
 	}
 
-	final void initFrame() {
-		setLayout(null);
-		setTitle("查询");
-		setSize(WIDTH, HEIGHT);
-		setResizable(false);
+	final void initFrame() 
+	{
 		setFeel(plaf);
-
-		JPanel select = new JPanel();
-		select.setBounds(0, 0, WIDTH, SELECTHIGHT);
-		select.setLayout(new FlowLayout());
-
-		select.add(new JLabel("选择表"));
-
+		setTitle("查询");
+		setLayout(new BorderLayout());
+		setSize(600, 600);	
+		JPanel head=new JPanel();
+		head.setLayout(new GridLayout(2,1));
+		JPanel tmp=new JPanel();
+		tmp.add(new JLabel("选择表"));
 		table = new JComboBox<String>();
 		table.setPreferredSize(new Dimension(120, 20));
-		select.add(table);
-
-		select.add(new JLabel("选择已有的设置"));
+		tmp.add(table);
+		tmp.add(new JLabel("选择已有的设置"));
 		set = new JComboBox<String>();
 		set.setPreferredSize(new Dimension(120, 20));
-		select.add(set);
-
-		save = new JButton("保存设置");
-		select.add(save);
-
+		tmp.add(set);
+		save = new JButton("新增设置");
+		tmp.add(save);
 		delete = new JButton("删除设置");
-		select.add(delete);
-
-		add(select);
-
-		select.add(new JLabel("选择显示项和设置查询条件"));
-		all = new JButton("全选");
-		none = new JButton("全不选");
-
-		select.add(all);
-		select.add(none);
-
+		tmp.add(delete);
+		head.add(tmp);
+		tmp=new JPanel();
+		tmp.add(new JLabel("选择显示项和设置查询条件"));
+		selectall = new JButton("全选");
+		selectnone = new JButton("全不选");
+		tmp.add(selectall);
+		tmp.add(selectnone);
+		head.add(tmp);
+		add(head,BorderLayout.NORTH);
+		
 		contentPanel = new JPanel();
 		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-
-		jsc = new JScrollPane(contentPanel);
-		jsc.setBounds(50, 80, 500, 500);
-		add(jsc);
-		yes = new JButton("确定");
-		out = new JButton("输出");
-
-		JPanel footer = new JPanel();
-		footer.setBounds(0, 600, 600, 100);
-		footer.setLayout(new FlowLayout());
-
-		footer.add(yes);
-		footer.add(out);
-
-		add(footer);
+	    JScrollPane	jsc = new JScrollPane(contentPanel);
+		add(jsc,BorderLayout.CENTER);
+		
+		confirm = new JButton("确定");
+		JPanel footer = new JPanel();		
+		footer.add(confirm);
+		add(footer,BorderLayout.SOUTH);
 	}
-
+	
+	private void loadTable()
+	{
+		table.removeAllItems();
+		ArrayList<String>list=db.getTableList(role_id);
+		for(int i=0;i<list.size();i++)
+		{
+			table.addItem(list.get(i));
+		}	
+	}
+	private void loadUserSet()
+	{
+		set.removeAllItems();
+		ArrayList<String>list=db.getSetname(account_id);
+		for(int i=0;i<list.size();i++)
+		{
+			set.addItem(list.get(i));
+		}		
+	}
+	
 	private void addListener() throws Exception {
-		
-		for(int i=0;i<cmbTable.size();i++)
-		{
-			table.addItem(cmbTable.get(i));
-		}
-		
-		rs = db.getSetname();
-		while (rs.next())
-		{
-			set.addItem(rs.getString(1));
-		}
+		loadTable();
+		loadUserSet();
+		//当表被选中时加载列
 		table.addActionListener(new ActionListener() {
 
 			public void actionPerformed(ActionEvent arg0) {
-				String cname = (String) table.getSelectedItem();
 				try {
-					rs = db.getcollist(cname);
-					contentPanel.removeAll();
-					while (rs.next()) {
-						contentPanel.add(new item("N", rs.getString(1), "", ""));
-					}
-					contentPanel.updateUI();
-					comp = contentPanel.getComponents();
-
-				} catch (SQLException e) {
-
-					e.printStackTrace();
-				}
-			}
-		});
-
-		all.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				item r;
-				for (Component c : comp) {
-					r = (item) c;
-					r.select(true);
+				table_id = db.getTableid((String) table.getSelectedItem());
+						
+				ArrayList<String>list=db.getcollist(role_id,table_id);
+				
+				contentPanel.removeAll();
+				for(int i=0;i<list.size();i++)
+				{
+					contentPanel.add(new item("N",list.get(i), "", ""));
 				}
 				contentPanel.updateUI();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}	
 			}
 		});
-		none.addActionListener(new ActionListener() {
+		//全选就是把全部列选中
+		selectall.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				item r;
-				for (Component c : comp) {
-					r = (item) c;
-					r.select(false);
+				Component[] comp = contentPanel.getComponents();
+				item item;
+				for (Component c : comp)
+				{
+					item = (item) c;
+					item.select(true);
 				}
 				contentPanel.updateUI();
 			}
 		});
 
-		set.addActionListener(new ActionListener() {
-
+		selectnone.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				try {
-					String setname = (String) set.getSelectedItem();
-
-					String tablename = null;
-					rs = db.gettablename(setname);
-					if (rs.next()) {
-						tablename = rs.getString(1);
-						table.setSelectedItem(tablename);
-
-						contentPanel.removeAll();
-
-						rs = db.getsetedcollist(setname);
-
-						while (rs.next()) {
-							contentPanel.add(new item(rs.getString(1), rs
-									.getString(2), rs.getString(3), rs
-									.getString(4)));
-						}
-						comp = contentPanel.getComponents();
-						contentPanel.updateUI();
-					}
-				} catch (SQLException e) {
-					e.printStackTrace();
+				item item;
+				Component[] comp = contentPanel.getComponents();
+				for (Component c : comp) {
+					item = (item) c;
+					item.select(false);
 				}
+				contentPanel.updateUI();
 			}
 		});
+		//当用户设置被选中时 先获取设置的表名 将表名下拉框设置为选中
+		//然后根据表名得到列名 根据 用户设置更新选中状态 查询条件
+		set.addActionListener(setlis);
+
+		//保存设置 弹出框输入设置名
+		//遍历列名 保存设置
+		//保存设置事先删除数据库中之前的设置  因为判断很繁琐
 		save.addActionListener(new ActionListener() {
-
 			public void actionPerformed(ActionEvent arg0) {
-				if (comp == null) {
-					JOptionPane.showMessageDialog(null, "未选择表", "Warnning",
-							JOptionPane.ERROR_MESSAGE);
-				} else {
-					String setname = null;
-					setname = JOptionPane.showInputDialog("输入此查询设置名");
-					if (setname == null || setname.equals("")) {
-						JOptionPane.showMessageDialog(null, "设置名不能为空",
-								"Warnning", JOptionPane.ERROR_MESSAGE);
-					} else {
-						item r;
-						for (Component c : comp) {
-							r = (item) c;
-							try {
-								db.insertintoquerycondition(
-										(String) table.getSelectedItem(),
-										setname, r.getcolname(), r.getjck(),
-										r.getcon1(), r.getcon2());
-							} catch (SQLException e) {
-								e.printStackTrace();
+				try {
+						Component[] comp = contentPanel.getComponents();
+						if (comp.length==0)
+						{
+							JOptionPane.showMessageDialog(null, "未选择表", "Warnning",JOptionPane.ERROR_MESSAGE);
+						} else
+						{
+							String setname = null;
+							setname = JOptionPane.showInputDialog("输入此查询设置名");
+							if (setname == null || setname.equals(""))
+							{
+								JOptionPane.showMessageDialog(null, "设置名不能为空","Warnning", JOptionPane.ERROR_MESSAGE);
+							}else 
+							{
+								item item;
+								db.deletequerycondition(account_id,setname);
+								for (Component c : comp)
+								{
+									item= (item) c;
+									db.setquerycondition(account_id,table_id,item.getjck(),setname, item.getcolname(),item.getcon1(), item.getcon2());
+								}
 							}
+							set.addItem(setname);
 						}
-						set.addItem(setname);
-					}
 				}
-
+				catch (SQLException e) {
+					e.printStackTrace();
+				}
 			}
 		});
+		//删除用户设置 就是删除
 		delete.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				try {
-					db.deletequerycondition((String) set.getSelectedItem());
-					set.removeItem(set.getSelectedItem());
-				} catch (SQLException e) {
-
-					e.printStackTrace();
-				}
-			}
-		});
-
-		yes.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				item r;
-				t = new ArrayList<String>();
-				query = new ArrayList<String>();
-				for (Component c : comp) {
-					r = (item) c;
-					if (r.isSelect()) {
-						t.add(r.getcolname());
-						if (r.isAllNone()) {
-							query.add("?NONE?");
-						} else
-							query.add(r.getsql());
-					}
-				}
-
-				Table ta;
-				try {
-					Vector columnt = new Vector(t);
-					Vector<Vector<String>> tabledata = new Vector<Vector<String>>();
-
-					try {
-						rs = db.getTable(t, query,
-								(String) table.getSelectedItem());
-						while (rs.next()) {
-							Vector<String> col = new Vector<String>();
-							for (int i = 0; i < t.size(); i++) {
-								col.add(rs.getString(i + 1));
-							}
-							tabledata.add(col);
-						}
-					} catch (Exception e) {
+					db.deletequerycondition(account_id,set.getSelectedItem().toString());
+					set.removeActionListener(setlis);
+					set.removeItem(set.getSelectedItem().toString());
+					contentPanel.removeAll();
+					contentPanel.updateUI();
+					} catch (SQLException e)
+					{
 						e.printStackTrace();
 					}
+			}
+		});
 
-					ta = new Table((String) table.getSelectedItem(), tabledata,
-							columnt);
-
-					ta.setDefaultCloseOperation(HIDE_ON_CLOSE);
-					ta.setVisible(true);
+		//点确定的时候遍历列名 生成sql语句 弹出一个窗口显示表
+		confirm.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent arg0)
+			{
+				try {
+				item item;
+				ArrayList<String> column = new ArrayList<String>();
+				ArrayList<String> query = new ArrayList<String>();
+				Component[] comp = contentPanel.getComponents();
+				for (Component c : comp)
+				{
+					item = (item) c;
+					if (item.isSelect())
+					{
+						column.add(item.getcolname());
+						query.add(item.getsql());
+					}
+				}
+				rs = db.getresultTable(column,query,table_id);
+				ArrayList<ArrayList<String>>tabledata=new ArrayList<ArrayList<String>>();
+				while (rs.next()) 
+				{
+					ArrayList<String> col = new ArrayList<String>();
+					for (int i = 0; i < column.size(); i++)
+					{
+						col.add(rs.getString(i + 1));
+					}
+					tabledata.add(col);
+				}
+				resultFrame res= new resultFrame(table_id,column,query,tabledata);
+				res.setDefaultCloseOperation(HIDE_ON_CLOSE);
+				res.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
-
 				}
 			}
 		});
-
-		out.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-
-			}
-		});
-
 	}
 
 	final void setFeel(String f) {
@@ -347,30 +299,23 @@ public class view extends JFrame {
 		frame.setVisible(true);
 	}
 
-	class Table extends JFrame {
-
-		static final String plaf = "com.sun.java.swing.plaf.windows.WindowsLookAndFeel";
-		JPanel foot;
-		JPanel TablePanel;
-
-		JComboBox<String> hz;
-		JComboBox<String> tj;
-		JButton yes;
-		JButton out;
-		JScrollPane jsc;
-		JTable table;
-		export ex;
-
-		private ResultSet rs;
-
-		Table(final String tablename, Vector tabledata, Vector columnt) {
+	class resultFrame extends JFrame
+	{	
+		private static final long serialVersionUID = 1L;
+		private JComboBox<String> hz=null;
+		private JComboBox<String> tj=null;
+		private JButton confirm=null;
+		private JButton output=null;
+		private JTable table=null;
+		private export ex=null;
+		JScrollPane jsc=null;
+		resultFrame(final int table_id,final ArrayList<String>  columnt,final ArrayList<String> query,ArrayList<ArrayList<String>> tabledata)
+		{
 			setLayout(new BorderLayout());
 			setTitle("查询结果");
 			setSize(600, 700);
 			setResizable(true);
-			setFeel(plaf);
-
-			foot = new JPanel();
+			JPanel foot=new JPanel();
 			foot.setLayout(new FlowLayout());
 			hz = new JComboBox<String>();
 			hz.setPreferredSize(new Dimension(120, 20));
@@ -380,60 +325,75 @@ public class view extends JFrame {
 			foot.add(hz);
 			foot.add(new JLabel("统计项"));
 			foot.add(tj);
-			yes = new JButton("统计确定");
-			foot.add(yes);
-			out = new JButton("统计输出");
-			foot.add(out);
+			confirm= new JButton("统计确定");
+			foot.add(confirm);
+			output = new JButton("统计输出");
+			foot.add(output);
 			add(foot, BorderLayout.SOUTH);
-
 			hz.addItem("请选择");
 			tj.addItem("请选择");
-
 			for (int i = 0; i < columnt.size(); i++) {
 				hz.addItem(columnt.get(i).toString());
 				tj.addItem(columnt.get(i).toString());
-
 			}
-			System.out.println(hz.getSelectedIndex());
-			TablePanel = new JPanel();
-			table = new JTable(new groupTable(tabledata, columnt));
+			table=new JTable(new groupTable(columnt,tabledata));
 			jsc = new JScrollPane(table);
-			TablePanel.add(jsc);
-			add(TablePanel, BorderLayout.CENTER);
-			System.out.println("the name");
+			
+			add(jsc, BorderLayout.CENTER);
 
-			out.addActionListener(new ActionListener() {
+			output.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent arg0) {
 					outExcel();
 				}
 			});
-			yes.addActionListener(new ActionListener() {
+			confirm.addActionListener(new ActionListener() {
 
 				public void actionPerformed(ActionEvent arg0) {
-					// TODO Auto-generated method stub
 					if (hz.getSelectedIndex() == 0
 							&& tj.getSelectedIndex() == 0) {
 						outExcel();
 					}
-
 					try {
 						String hzx = hz.getSelectedItem().toString();
 						String tjx = tj.getSelectedItem().toString();
-						System.out.println(hzx + " " + tjx + " " + tablename);
+						String hzxsql="";
+						String tjxsql="";
+						int count=0;
+						
+						for(int i=0;i<columnt.size();i++)
+						{
+							if(count==2)break;
+							if(columnt.get(i).equals(hzx))
+							{
+								hzxsql=query.get(i);
+								count++;
+							}
+							else if(columnt.get(i).equals(tjx))
+							{
+								tjxsql=query.get(i);
+								count++;
+							}
+							
+						}
+						
+						ArrayList<ArrayList<String>> data=db.getGroup(table_id,hzx,hzxsql,tjx,tjxsql);
+						ArrayList<String>col=new ArrayList<String>();
+						col.add(hzx);
+						col.add(tjx+"汇总");
 
-						Vector v = view.this.db.getGroup(hzx, tjx, tablename);
-						System.out.println("click");
-						Vector<String> s = new Vector<String>();
-						s.add(tjx);
-						s.add(hzx);
-						TablePanel.removeAll();
-						table = new JTable(new groupTable(v, s));
+					//	jsc.remove(table);
+						table=new JTable(new groupTable(col,data));						
+					//	jsc.add(table);
+						remove(jsc);
 						jsc = new JScrollPane(table);
-						TablePanel.add(jsc);
-						TablePanel.updateUI();
+						add(jsc,BorderLayout.CENTER);
+//						table.paintImmediately(table.getBounds());
+						//table.repaint();
+						//jsc.repaint();
+						resultFrame.this.setVisible(true);
+						//jsc.getParent().repaint();
 
 					} catch (Exception e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
@@ -449,13 +409,53 @@ public class view extends JFrame {
 				e.printStackTrace();
 			}
 		}
-
 		private void outExcel() {
 			ex = new export(table);
 			ex.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 			ex.setVisible(true);
-
 		}
 	}
+
+
+	class setActionListener implements ActionListener
+	{
+
+		public void actionPerformed(ActionEvent arg0) {
+			try {
+				System.out.println("here");
+				String setname = (String) set.getSelectedItem();
+			 	String tablename = db.gettablename(setname,account_id);
+			 	System.out.println(setname+" "+tablename);
+			 	table.setSelectedItem(tablename);
+				
+			 	ArrayList<String>list=db.getcollist(role_id,table_id);
+				System.out.println(list.size());
+				contentPanel.removeAll();
+				for(int i=0;i<list.size();i++)
+				{
+					String columnname=list.get(i);
+					String[]set=db.getquerycondition(account_id,table_id,setname,columnname);
+					item item=new item(set[0],columnname,set[1],set[2]);
+					contentPanel.add(item);
+				}
+				contentPanel.updateUI();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }

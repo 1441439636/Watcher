@@ -28,13 +28,13 @@ SwingUtilities.updateComponentTreeUI(this);
 		// 登录界面布局使用FlowLayout 设置大小就自动挤压成一行一行的
 		panel.add(new JLabel("账号:    "));
 		
-		username = new JTextField();
+		username = new JTextField("ls");
 		username.setPreferredSize(new Dimension(120, 20));
 		panel.add(username);
 				
 		panel.add(new JLabel("密码:    "));
 		
-		password = new JPasswordField();
+		password = new JPasswordField("123");
 		password.setPreferredSize(new Dimension(120, 20));
 		panel.add(password);
 		
