@@ -79,12 +79,12 @@ public class DatabaseConnect
 	
 	public void setquerycondition(int account_id,int table_id,String flag,String setName,String colname,String con1,String con2) throws SQLException
 	{
-		int column_id=getcolumnid(table_id,colname);
+		String column_name=getcolumnname(table_id,colname);
 		pre=con.prepareStatement(insertintoqueryconditionSql);
 		pre.setInt(1,account_id);
 		pre.setInt(2, table_id);
 		pre.setString(3, setName);	
-  		pre.setInt(4, column_id);
+  		pre.setString(4, column_name);
   		pre.setString(5,flag);
   		pre.setString(6, con1);
   		pre.setString(7, con2);		
@@ -98,14 +98,14 @@ public class DatabaseConnect
 		
 	}
 
-	private int getcolumnid(int table_id, String colname) throws SQLException {
-		pre=con.prepareStatement(getcolumnid);
+	private String getcolumnname(int table_id, String colname) throws SQLException {
+		pre=con.prepareStatement(getcolumnname);
 		pre.setInt(1,table_id);
 		pre.setString(2, colname);
 		result=pre.executeQuery();
   		if(result.next())
-  			return result.getInt(1);
-  		else return -1;
+  			return result.getString(1);
+  		else return null;
 	}
 
 	public String getEnglishTablenameById(int table_id) throws SQLException
@@ -227,12 +227,12 @@ public class DatabaseConnect
 	{
 		String[] set={"N","",""};
 		try {
-			int column_id=getcolumnid(table_id, columnname);
+			String column_name=getcolumnname(table_id, columnname);
 			pre=con.prepareStatement(getquerycondition);
 			
 			pre.setInt(1,account_id);
 			pre.setInt(2, table_id);
-			pre.setInt(3, column_id);
+			pre.setString(3, column_name);
 			pre.setString(4, setname);
 			result=pre.executeQuery();
 			if(result.next())
@@ -262,8 +262,7 @@ public class DatabaseConnect
 		try {
 			pre=con.prepareStatement(getcolumn);
 			pre.setInt(1, table_id);
-			pre.setInt(2, table_id);
-			pre.setString(3, column);
+			pre.setString(2, column);
 			result=pre.executeQuery();
 			if(result.next())
 			{
@@ -316,8 +315,7 @@ public class DatabaseConnect
     private String getUnadornColumnByadorn(int table_id, String col) throws SQLException {
     	pre=con.prepareStatement(getUnadornColumnByadorn);
 		pre.setInt(1, table_id);
-		pre.setInt(2, table_id);
-		pre.setString(3, col);	
+		pre.setString(2, col);	
 		result= pre.executeQuery();
 		if(result.next())return result.getString(1);
 		return null;
@@ -331,16 +329,14 @@ public class DatabaseConnect
 		return null;
 	}
 
-
-
-	private final static String getcollistSql="select c.adorn_name from columnname c where c.table_id=? and c.column_id in (select r.column_id from rolepermission r where r.role_id=? and r.table_id=?)";
+	private final static String getcollistSql="select c.adorn_name from columnname c where c.table_id=? and c.column_name in (select r.column_name from rolepermission r where r.role_id=? and r.table_id=?)";
     private final static String getsetedcollistSql="select focus,colname,con1,con2 from querycondition where querycondition.setname=? and account_id=? ";
 
     private final static String gettablenameSql="select adorn_name from tablename where table_id in (select distinct table_id from querycondition where setname=? and account_id=?)";
 
     private final static String getsetnameSql="select distinct setname from querycondition where account_id=?";
  
-    private final static String insertintoqueryconditionSql="insert into querycondition(account_id,table_id,setname,column_id,flag,con1,con2)"
+    private final static String insertintoqueryconditionSql="insert into querycondition(account_id,table_id,setname,column_name,flag,con1,con2)"
     		+"values(?,?,?,?,?,?,?)";
 
     private final static String loginSql="select role_id,account_id from roleaccount where account_id in (select account_id from account where name=? and password=?)";
@@ -349,16 +345,16 @@ public class DatabaseConnect
 	
 	private final static String getTableid="select table_id from tablename where adorn_name=?";
 
-	private final static String getcolumnid="select column_id from columnname where table_id=? and adorn_name=?";
+	private final static String getcolumnname="select column_name from columnname where table_id=? and adorn_name=?";
 
 	private final static String deletequerycondition="delete from querycondition where account_id=? and setname=?";
 
-	private final static String getquerycondition="select flag,con1,con2 from  querycondition where account_id=? and table_id=? and column_id=? and setname=?";
+	private final static String getquerycondition="select flag,con1,con2 from  querycondition where account_id=? and table_id=? and column_name=? and setname=?";
 
-	private final static String getcolumn="select column_name from user_tab_cols where table_name in (select table_name from tablename where table_id=?) and column_id  in (select column_id from columnname where table_id=? and adorn_name=?)";
+	private final static String getcolumn="select column_name from  columnname where table_id=? and adorn_name=?";
 
 	private final static String getUnadornTablenameById="select table_name from tablename where table_id=?";
 	
-	private final static String getUnadornColumnByadorn="select column_name from user_tab_cols where table_name in(select object_name from  user_objects where object_id=?) and column_id in (select column_id  from columnname where table_id=? and adorn_name=?)";
+	private final static String getUnadornColumnByadorn="select column_name from  columnname where table_id=? and adorn_name=?";
     
 }
