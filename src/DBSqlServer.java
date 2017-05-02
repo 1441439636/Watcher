@@ -12,6 +12,7 @@ import java.util.Properties;
 //Products
 //toys
 //Vendors
+//
 public class DBSqlServer implements DatabaseConnect {
     Connection con = null;// 创建一个数据库连接
     PreparedStatement pre = null;// 创建预编译语句对象，一般都是用这个而不用Statement
@@ -37,23 +38,6 @@ public class DBSqlServer implements DatabaseConnect {
         }
     }
 
-    public static void main(String[] args) {
-        DBSqlServer db = new DBSqlServer();
-//        db.asd();
-    }
-
-//    public void asd() {
-//        for (int i = 1000000037; i < 1000000087; i++) {
-//            try {
-//                pre = con.prepareStatement("INSERT INTO Customers " +
-//                        "VALUES(" + i + ", 'The Toy Store', '4545 53rd Street', 'Chicago', 'IL', '54545', 'USA', 'Kim Howard','q')");
-//                pre.execute();
-//                pre.close();
-//            } catch (SQLException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//    }
 
     //******************************
     public Boolean connect(String user, String password, String address, String databasename) {
@@ -443,4 +427,31 @@ public class DBSqlServer implements DatabaseConnect {
         }
         return false;
     }
+
+    @Override
+    public boolean getTypeColumn(String column, int table_id) {
+
+        try {
+            pre = con.prepareStatement("  select t.name from sys.columns c INNER JOIN  sys.types t on c.system_type_id=t.system_type_id where object_id=?  and c.name=?");
+            pre.setInt(1, table_id);
+            pre.setString(2, column);
+            ResultSet result = pre.executeQuery();
+            if (result.next() && result.getString(1).equals("int")) {
+                System.out.println("1:" + result.getString(1));
+                System.out.println("2:" + result.getString(1).equals("int"));
+                result.close();
+                return true;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return false;
+    }
+
+    public static void main(String[] args) {
+        DBSqlServer db = new DBSqlServer();
+//        db.asd();
+    }
+
 }

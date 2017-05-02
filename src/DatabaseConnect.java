@@ -66,5 +66,5 @@ public interface DatabaseConnect {
     boolean hasSetname(int account_id, String name);
 
 
-
+    boolean getTypeColumn(String s, int table_id);
 }

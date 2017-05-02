@@ -257,8 +257,8 @@ public class view extends JFrame {
             public void actionPerformed(ActionEvent arg0) {
                 try {
                     item item;
-                    ArrayList<String> column = new ArrayList<String>();
-                    ArrayList<String> query = new ArrayList<String>();
+                    ArrayList<String> column = new ArrayList<>();
+                    ArrayList<String> query = new ArrayList<>();
                     Component[] comp = contentPanel.getComponents();
                     for (Component c : comp) {
                         item = (item) c;
@@ -345,8 +345,9 @@ public class view extends JFrame {
 
     class resultFrame extends JFrame {
         private static final long serialVersionUID = 1L;
-        private JComboBox<String> hz = null;
+        private JComboBox<String> cz = null;
         private JComboBox<String> tj = null;
+        private JComboBox<String> tjfs = null;
         private JButton confirm = null;
         private JButton output = null;
         private JTable table = null;
@@ -356,29 +357,48 @@ public class view extends JFrame {
         resultFrame(final int table_id, final ArrayList<String> columnt, final ArrayList<String> query, ArrayList<ArrayList<String>> tabledata) {
             setLayout(new BorderLayout());
             setTitle("查询结果");
-            setSize(600, 700);
+            setSize(800, 700);
             setResizable(true);
             JPanel foot = new JPanel();
             foot.setLayout(new FlowLayout());
-            hz = new JComboBox<>();
-            hz.setPreferredSize(new Dimension(120, 20));
+            cz = new JComboBox<>();
+            cz.setPreferredSize(new Dimension(120, 20));
             tj = new JComboBox<>();
             tj.setPreferredSize(new Dimension(120, 20));
-            foot.add(new JLabel("汇总项(数值)"));
-            foot.add(hz);
+            foot.add(new JLabel("操作项(数值)"));
+            foot.add(cz);
             foot.add(new JLabel("统计项"));
             foot.add(tj);
-            confirm = new JButton("统计确定");
+            foot.add(new JLabel("统计方式"));
+            tjfs = new JComboBox<>();
+            tjfs.setPreferredSize(new Dimension(100, 20));
+            tjfs.addItem("和");
+            tjfs.addItem("平均");
+            tjfs.addItem("最大");
+            tjfs.addItem("最小");
+            foot.add(tjfs);
+            confirm = new JButton("确定");
             foot.add(confirm);
-            output = new JButton("统计输出");
+            output = new JButton("输出");
             foot.add(output);
-            add(foot,BorderLayout.SOUTH);
-            hz.addItem("请选择");
+            add(foot, BorderLayout.SOUTH);
+            cz.addItem("请选择");
             tj.addItem("请选择");
             for (int i = 0; i < columnt.size(); i++) {
-                hz.addItem(columnt.get(i).toString());
+                if (db.getTypeColumn(columnt.get(i).toString(), table_id))
+                    cz.addItem(columnt.get(i).toString());
                 tj.addItem(columnt.get(i).toString());
             }
+            System.out.println("cz.getItemCount():" + cz.getItemCount());
+            if (cz.getItemCount() == 1) {
+                cz.removeAllItems();
+                tj.removeAllItems();
+                tjfs.removeAllItems();
+                cz.addItem("无可选项");
+                tj.addItem("无可选项");
+                tjfs.addItem("无可选项");
+            }
+
             table = new JTable(new groupTable(columnt, tabledata));
             jsc = new JScrollPane(table);
 
@@ -389,43 +409,118 @@ public class view extends JFrame {
                     outExcel();
                 }
             });
+
+            cz.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    tj.setSelectedItem(cz.getSelectedItem());
+                }
+            });
             confirm.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent arg0) {
-                    if (hz.getSelectedIndex() == 0
+                    if (cz.getSelectedIndex() == 0
                             && tj.getSelectedIndex() == 0) {
                         return;
                     }
-                    try {
-                        String hzx = hz.getSelectedItem().toString();
-                        String tjx = tj.getSelectedItem().toString();
-                        String hzxsql = "";
-                        String tjxsql = "";
-                        int count = 0;
-                        for (int i = 0; i < columnt.size(); i++) {
-                            if (count == 2) break;
-                            if (columnt.get(i).equals(hzx)) {
-                                hzxsql = query.get(i);
-                                count++;
-                            } else if (columnt.get(i).equals(tjx)) {
-                                tjxsql = query.get(i);
-                                count++;
+
+                    if (cz.getSelectedIndex() == 0 && tj.getSelectedIndex() != 0) {
+                        String tjVal = tj.getSelectedItem().toString();
+                        ArrayList<String> col = new ArrayList<>();
+                        col.add("sex");
+                        col.add("汇总");
+
+                        ArrayList<ArrayList<String>> data = new ArrayList<>();
+                        for (ArrayList<String> val : tabledata) {
+                            boolean flag = true;
+                            for (ArrayList<String> l : data) {
+                                if (l.get(0).equals(val.get(columnt.indexOf(tjVal))))
+                                    flag = false;
+                            }
+
+                            if (!flag) {
+                                for (ArrayList<String> l : data) {
+                                    if (l.get(0).equals(val.get(columnt.indexOf(tjVal)))) {
+                                        l.set(1, String.valueOf(Integer.parseInt(l.get(1)) + 1));
+                                    }
+                                }
+                            } else {
+                                ArrayList<String> l = new ArrayList<>();
+                                l.add(val.get(columnt.indexOf(tjVal)));
+                                l.add(1 + "");
+                                data.add(l);
                             }
                         }
-                        //*---------------------------------需要处理
-                        ArrayList<ArrayList<String>> data = db.getGroup(table_id, hzx, hzxsql, tjx, tjxsql);
-                        ArrayList<String> col = new ArrayList<>();
-                        col.add(tjx);
-                        col.add(hzx + "汇总");
-
                         table = new JTable(new groupTable(col, data));
                         remove(jsc);
                         jsc = new JScrollPane(table);
                         add(jsc, BorderLayout.CENTER);
                         resultFrame.this.setVisible(true);
 
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    } else {
+
+                        String tjVal = tj.getSelectedItem().toString();
+                        ArrayList<String> col = new ArrayList<>();
+                        col.add(tjVal);
+                        col.add(tjVal+"汇总");
+
+                        ArrayList<ArrayList<String>> data = new ArrayList<>();
+                        for (ArrayList<String> val : tabledata) {
+                            boolean flag = true;
+                            for (ArrayList<String> l : data) {
+                                if (l.get(0).equals(val.get(columnt.indexOf(tjVal))))
+                                    flag = false;
+                            }
+
+                            if (!flag) {
+                                for (ArrayList<String> l : data) {
+                                    if (l.get(0).equals(val.get(columnt.indexOf(tjVal)))) {
+                                        l.set(1, String.valueOf(Integer.parseInt(l.get(1)) + 1));
+                                    }
+                                }
+                            } else {
+                                ArrayList<String> l = new ArrayList<>();
+                                l.add(val.get(columnt.indexOf(tjVal)));
+                                l.add(1 + "");
+                                data.add(l);
+                            }
+                        }
+                        table = new JTable(new groupTable(col, data));
+                        remove(jsc);
+                        jsc = new JScrollPane(table);
+                        add(jsc, BorderLayout.CENTER);
+                        resultFrame.this.setVisible(true);
                     }
+//                    try {
+//                        String hzx = cz.getSelectedItem().toString();
+//                        String tjx = tj.getSelectedItem().toString();
+//                        String hzxsql = "";
+//                        String tjxsql = "";
+//                        int count = 0;
+//                        for (int i = 0; i < columnt.size(); i++) {
+//                            if (count == 2) break;
+//                            if (columnt.get(i).equals(hzx)) {
+//                                hzxsql = query.get(i);
+//                                count++;
+//                            } else if (columnt.get(i).equals(tjx)) {
+//                                tjxsql = query.get(i);
+//                                count++;
+//                            }
+//                        }
+                        //*---------------------------------需要处理
+//                        ArrayList<ArrayList<String>> data = db.getGroup(table_id, hzx, hzxsql, tjx, tjxsql);
+//                        ArrayList<String> col = new ArrayList<>();
+//                        col.add(tjx);
+//                        col.add(hzx + "汇总");
+//
+//                        table = new JTable(new groupTable(col, data));
+//                        remove(jsc);
+//                        jsc = new JScrollPane(table);
+//                        add(jsc, BorderLayout.CENTER);
+//                        resultFrame.this.setVisible(true);
+//
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                    }
                 }
             });
 

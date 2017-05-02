@@ -356,6 +356,11 @@ public class DBOracle implements DatabaseConnect{
         }
         return false;
     }
+//需要处理
+    @Override
+    public boolean getTypeColumn(String s, int table_id) {
+        return false;
+    }
 
 
     private final static String getcollistSql = "select c.adorn_name from columnname c where c.table_id=? and c.column_name in (select r.column_name from rolepermission r where r.role_id in (select role_id from roleaccount where account_id=?) and r.table_id=?) order by c.no";
