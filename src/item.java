@@ -51,6 +51,15 @@ private	JLabel bn;
 	public String getcon2() {
 		return tf2.getText();
 	}
+	
+	public void setcon1(String s) {
+		 tf1.setText(s);
+	}
+
+	public void setcon2(String s) {
+		 tf2.setText(s);
+	}
+	
 	public String getjck() {
 		return jck.isSelected()?"Y":"N";
 	}

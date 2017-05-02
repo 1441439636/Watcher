@@ -8,52 +8,69 @@ public class logDialog extends JPanel
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	JTextField username;
-	JPasswordField password;
+	private JTextField username;
+	private JPasswordField password;
 	
-	JButton confirm;
-	JButton cancle;
-	boolean ok;
-	JDialog dialog;
-	public logDialog() throws Exception
+	private JButton confirm;
+	private JButton cancle;
+	private int ok;
+	private JDialog dialog;
+	private int left;
+	private int top;
+	private int width;
+	private int height;
+	public logDialog(int left,int top,int width,int height) throws Exception
 	{
 		UIManager
 		.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
 SwingUtilities.updateComponentTreeUI(this);
 		setLayout(new BorderLayout());
-		setPreferredSize(new Dimension(200, 300));
+		this.left=left;
+		this.top=top;
+		this.width=width;
+		this.height=height;
+
+		setPreferredSize(new Dimension(width, height));		
+		
+
+		
+		
+		
+		
+		
 		
 		JPanel panel=new JPanel();
 		panel.setLayout(new FlowLayout());
-		// 登录界面布局使用FlowLayout 设置大小就自动挤压成一行一行的
-		panel.add(new JLabel("账号:    "));
+		// 鐧诲綍鐣岄潰甯冨眬浣跨敤FlowLayout 璁剧疆澶у皬灏辫嚜鍔ㄦ尋鍘嬫垚涓�琛屼竴琛岀殑
+		panel.add(new JLabel("璐﹀彿:    "));
 		
-		username = new JTextField("ls");
+		username = new JTextField("");
 		username.setPreferredSize(new Dimension(120, 20));
 		panel.add(username);
 				
-		panel.add(new JLabel("密码:    "));
+		panel.add(new JLabel("瀵嗙爜:    "));
 		
-		password = new JPasswordField("123");
+		password = new JPasswordField("");
 		password.setPreferredSize(new Dimension(120, 20));
 		panel.add(password);
 		
 	
 		add(panel,BorderLayout.CENTER);
 		
-		confirm=new JButton("确定");
+		confirm=new JButton("纭畾");
 		confirm.addActionListener(new ActionListener() {
 			
 			public void actionPerformed(ActionEvent arg0) {
-				ok=true;
+				ok=1;
 				dialog.setVisible(false);
 			}
 		});
-		cancle=new JButton("取消");
+		cancle=new JButton("鍙栨秷");
 		cancle.addActionListener(new ActionListener() {
 			
 			public void actionPerformed(ActionEvent arg0) {
 				dialog.setVisible(false);
+				ok=-1;
 			}
 		});
 		JPanel buttonPanel=new JPanel();
@@ -69,17 +86,29 @@ SwingUtilities.updateComponentTreeUI(this);
 	{
 		return new String(password.getPassword());
 	}	
-	public boolean showdia(Component parent,String title)
+	public int showdia(Component parent,String title)
 	{
-		ok=false;
+		ok=0;
 		Frame ower=null;
 		if(parent instanceof Frame)ower=(Frame)parent;
 		else ower=(Frame)SwingUtilities.getAncestorOfClass(Frame.class, parent);
 		
 		if(dialog==null||dialog.getOwner()!=ower)
 		{
-			dialog=new JDialog(ower,true);
+			
+			dialog=new JDialog(ower,true)
+			{
+				private static final long serialVersionUID = 1L;
+				protected void processWindowEvent(WindowEvent e) {
+			        super.processWindowEvent(e);
+
+			        if (e.getID() == WindowEvent.WINDOW_CLOSING) {
+			        	ok=-2;
+			            }
+			        }
+			};
 			dialog.add(this);
+			dialog.setBounds(left, top, width, height);
 			dialog.getRootPane().setDefaultButton(confirm);
 			dialog.pack();
 		}

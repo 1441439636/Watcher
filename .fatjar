@@ -1,10 +1,10 @@
 #Fat Jar Configuration File
-#Wed Sep 23 18:13:37 CST 2015
+#Thu Nov 05 21:48:58 CST 2015
 onejar.license.required=true
 manifest.classpath=
 manifest.removesigners=true
 onejar.checkbox=false
-jarname=DataBaseClient_fat.jar
+jarname=Watcher.jar
 manifest.mergeall=true
 manifest.mainclass=view
 manifest.file=<createnew>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Watcher">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/Watcher.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

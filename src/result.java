@@ -1,4 +1,4 @@
-import java.awt.Dimension;
+import java.awt.*;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -11,28 +11,28 @@ public class result extends JFrame {
 
 	result()
 	{
-		setTitle("²éÑ¯½á¹û");
+		setTitle("æŸ¥è¯¢ç»“æžœ");
 		setSize(600,600);
-		add(new JLabel("»ã×ÜÏî(ÊýÖµ)"));
+		add(new JLabel("æ±‡æ€»é¡¹(æ•°å€¼)"));
 		
 		hzx=new JComboBox<String>();
 		hzx.setPreferredSize(new Dimension(120, 20));
-		
-		add(hzx);
-		
-		
-		add(new JLabel("Í³¼ÆÏî"));
+
+		final Component add = add(hzx);
+
+
+		add(new JLabel("ç»Ÿè®¡é¡¹"));
 	
 		tjx=new JComboBox<String>();
 		tjx.setPreferredSize(new Dimension(120, 20));
 		
 		add(tjx);
 	
-		yes=new JButton("Í³¼ÆÈ·ÈÏ");
+		yes=new JButton("ç»Ÿè®¡ç¡®è®¤");
 		
 		add(yes);
 		
-		out=new JButton("Í³¼ÆÊä³ö");
+		out=new JButton("ç»Ÿè®¡è¾“å‡º");
 		
 		add(out);
 		

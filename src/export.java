@@ -1,11 +1,12 @@
+import org.apache.poi.hssf.usermodel.*;
+import org.apache.poi.hssf.util.HSSFColor;
+import tool.L;
+
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -20,105 +21,134 @@ import javax.swing.table.TableModel;
 
 
 public class export extends JFrame {
-	
-	export(final JTable jt)
-	{
-		setLayout(new FlowLayout());
-		setTitle("µ¼³öÎÄ¼þ");
-		setSize(300,150);
-		setFeel(plaf);
-		add(new JLabel("ÎÄ¼þÃû"));
-		path=new JTextField();
-		path.setPreferredSize(new Dimension(150,20));
-		add(path);
-		open=new JButton("Ñ¡ÔñÂ·¾¶");
-		add(open);
-		jck=new JCheckBox();
-		add(jck);
-		add(new JLabel("µ¼³öºó´ò¿ªÎÄ¼þ"));
-		yes=new JButton("È·¶¨");
-		add(yes);
-		open.addActionListener(new ActionListener() {
-			
-			public void actionPerformed(ActionEvent arg0) {
-				 JFileChooser jfc=new JFileChooser();  
-			        jfc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES );  
-			        jfc.showDialog(new JLabel(), "Ñ¡Ôñ");  
-			        File file=jfc.getSelectedFile();  
-			        path.setText(file.getAbsolutePath());		        
-			}
-		});
-		yes.addActionListener(new ActionListener() {
-			
-			public void actionPerformed(ActionEvent arg0) {
-				try {
-					File f=new File(path.getText());
-					exportTable(jt,f);
-					if(jck.isSelected())
-					{
-						java.awt.Desktop.getDesktop().open(f);;
-					}
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				
-			}
-		});
-	}
-	
-	public void exportTable(JTable table, File file) throws IOException {
-	       TableModel model = table.getModel();
-	       BufferedWriter bWriter = new BufferedWriter(new FileWriter(file));
-	       for(int i=0; i < model.getColumnCount(); i++) {
-	           bWriter.write(model.getColumnName(i));
-	           bWriter.write("\t");
-	       }
-	       bWriter.newLine();
-	       for(int i=0; i< model.getRowCount(); i++) {
-	           for(int j=0; j < model.getColumnCount(); j++) {
-	               bWriter.write(model.getValueAt(i,j).toString());
-	               bWriter.write("\t");
-	           }
-	           bWriter.newLine();
-	       }
-	       bWriter.close();
-	      
-	   }
-	public static void main(String[] args) {
-		
-		
-		Object[][] tableData =   
-			    {  
-			        new Object[]{"ÀîÇåÕÕ" , 29 , "Å®"},  
-			        new Object[]{"ËÕ¸ñÀ­µ×", 56 , "ÄÐ"},  
-			        new Object[]{"Àî°×", 35 , "ÄÐ"},  
-			        new Object[]{"ÅªÓñ", 18 , "Å®"},  
-			        new Object[]{"»¢Í·" , 2 , "ÄÐ"}  
-			    };  
-			    //¶¨ÒåÒ»Î¬Êý¾Ý×÷ÎªÁÐ±êÌâ  
-		Object[] columnTitle = {"ÐÕÃû" , "ÄêÁä" , "ÐÔ±ð"};  
-		JTable table = new JTable(tableData , columnTitle);
-		
-		export e=new export(table);
-		e.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-		e.setVisible(true);
-	}
-	static final String plaf="com.sun.java.swing.plaf.windows.WindowsLookAndFeel";
 
-	final  void  setFeel(String f)
-	{
-		try {
-			UIManager.setLookAndFeel(f);
-			SwingUtilities.updateComponentTreeUI(this);
-		} 
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	JCheckBox jck;
-	JTextField path;
-	JButton open;
-	JButton yes;
-	
+    export(final JTable jt) {
+        setLayout(new FlowLayout());
+        setTitle("å¯¼å‡ºæ–‡ä»¶");
+        setSize(300, 150);
+        setFeel(plaf);
+        add(new JLabel("æ–‡ä»¶å"));
+        path = new JTextField();
+        path.setPreferredSize(new Dimension(150, 20));
+        add(path);
+        open = new JButton("é€‰æ‹©è·¯å¾„");
+        add(open);
+        jck = new JCheckBox();
+        add(jck);
+        add(new JLabel("å¯¼å‡ºåŽæ‰“å¼€æ–‡ä»¶"));
+        yes = new JButton("ç¡®å®š");
+        add(yes);
+        open.addActionListener(new ActionListener() {
+
+            public void actionPerformed(ActionEvent arg0) {
+                JFileChooser jfc = new JFileChooser();
+                jfc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+                jfc.showDialog(new JLabel(), "é€‰æ‹©");
+                File file = jfc.getSelectedFile();
+                path.setText(file.getAbsolutePath());
+            }
+        });
+        yes.addActionListener(new ActionListener() {
+
+            public void actionPerformed(ActionEvent arg0) {
+                try {
+                    File f = new File(path.getText());
+                    exportTable(jt, f);
+                    if (jck.isSelected()) {
+                        java.awt.Desktop.getDesktop().open(f);
+                        ;
+                    }
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+
+            }
+        });
+    }
+
+    public void exportTable(JTable table, File file) throws IOException {
+        TableModel model = table.getModel();
+        FileOutputStream out = new FileOutputStream(file);
+        // å£°æ˜Žä¸€ä¸ªå·¥ä½œè–„
+        HSSFWorkbook workbook = new HSSFWorkbook();
+        // ç”Ÿæˆä¸€ä¸ªè¡¨æ ¼
+        HSSFSheet sheet = workbook.createSheet("é»˜è®¤");
+        // è®¾ç½®è¡¨æ ¼é»˜è®¤åˆ—å®½åº¦ä¸º15ä¸ªå­—èŠ‚
+        sheet.setDefaultColumnWidth((short) 15);
+        // ç”Ÿæˆä¸€ä¸ªæ ·å¼
+        HSSFCellStyle style = workbook.createCellStyle();
+        // è®¾ç½®è¿™äº›æ ·å¼
+        style.setFillForegroundColor(HSSFColor.SKY_BLUE.index);
+        style.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
+        style.setBorderBottom(HSSFCellStyle.BORDER_THIN);
+        style.setBorderLeft(HSSFCellStyle.BORDER_THIN);
+        style.setBorderRight(HSSFCellStyle.BORDER_THIN);
+        style.setBorderTop(HSSFCellStyle.BORDER_THIN);
+        style.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+        // ç”Ÿæˆä¸€ä¸ªå­—ä½“
+        HSSFFont font = workbook.createFont();
+        font.setColor(HSSFColor.VIOLET.index);
+        font.setFontHeightInPoints((short) 12);
+        font.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+        // æŠŠå­—ä½“åº”ç”¨åˆ°å½“å‰çš„æ ·å¼
+        style.setFont(font);
+        // ç”Ÿæˆå¹¶è®¾ç½®å¦ä¸€ä¸ªæ ·å¼
+        HSSFCellStyle style2 = workbook.createCellStyle();
+        style2.setFillForegroundColor(HSSFColor.LIGHT_YELLOW.index);
+        style2.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
+        style2.setBorderBottom(HSSFCellStyle.BORDER_THIN);
+        style2.setBorderLeft(HSSFCellStyle.BORDER_THIN);
+        style2.setBorderRight(HSSFCellStyle.BORDER_THIN);
+        style2.setBorderTop(HSSFCellStyle.BORDER_THIN);
+        style2.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+        style2.setVerticalAlignment(HSSFCellStyle.VERTICAL_CENTER);
+        // ç”Ÿæˆå¦ä¸€ä¸ªå­—ä½“
+        HSSFFont font2 = workbook.createFont();
+        font2.setBoldweight(HSSFFont.BOLDWEIGHT_NORMAL);
+        // æŠŠå­—ä½“åº”ç”¨åˆ°å½“å‰çš„æ ·å¼
+        style2.setFont(font2);
+
+
+        HSSFRow row = sheet.createRow(0);
+
+
+        for (int i = 0; i < model.getColumnCount(); i++) {
+            HSSFCell cell = row.createCell(i);
+            cell.setCellStyle(style);
+            HSSFRichTextString text = new HSSFRichTextString(model.getColumnName(i));
+            cell.setCellValue(text);
+        }
+
+        for (int i = 0; i < model.getRowCount(); i++) {
+            row = sheet.createRow(i + 1);
+            for (int j = 0; j < model.getColumnCount(); j++) {
+                Object oval = model.getValueAt(i, j);
+                String val = "";
+                if (oval != null) {
+                    val = oval.toString();
+                }
+                row.createCell(j).setCellValue(val);
+            }
+        }
+
+        workbook.write(out);
+    }
+
+    public static final String plaf = "com.sun.java.swing.plaf.windows.WindowsLookAndFeel";
+
+    final void setFeel(String f) {
+        try {
+            UIManager.setLookAndFeel(f);
+            SwingUtilities.updateComponentTreeUI(this);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    JCheckBox jck;
+    JTextField path;
+    JButton open;
+    JButton yes;
+
 }

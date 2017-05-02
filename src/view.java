@@ -1,8 +1,5 @@
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.GridLayout;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.ResultSet;
@@ -10,452 +7,468 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Vector;
 
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 public class view extends JFrame {
-	static final String plaf = "com.sun.java.swing.plaf.windows.WindowsLookAndFeel";
-	private JPanel contentPanel;
-	private JComboBox<String> table;
-	private JComboBox<String> set;
-	private JButton selectall;
-	private JButton selectnone;
-	private JButton save;
-	private JButton delete;
-	private JButton confirm;
-	private DatabaseConnect db;
-	private ResultSet rs;
-	private final setActionListener setlis=new setActionListener();
-	Vector<String> cmbTable;
-	int role_id=0;
-	int account_id=0;
-	int table_id=0;
-	private static final long serialVersionUID = 1L;
+    static final String plaf = "com.sun.java.swing.plaf.windows.WindowsLookAndFeel";
+    private JPanel contentPanel;
+    private JComboBox<String> table;
+    private JComboBox<String> set;
+    private JButton selectall;
+    private JButton selectnone;
+    private JButton save;
+    private JButton delete;
+    private JButton confirm;
+    private JButton out;
 
-	public view() throws Exception {
-		if(log())
-		{
-			initFrame();
-			addListener();
-			setVisible(true);
-		}
-		else
-		{
-			JOptionPane.showMessageDialog(null, "ÄãµÄÕËºÅ/ÃÜÂë´íÎó", "+_+",
-					JOptionPane.ERROR_MESSAGE);
-		}	
-	}
-	//´ÓÄ³¸öÅäÖÃÎÄ¼şÖĞ¶Áµ½Êı¾İ¿âÕËºÅÃÜÂë 
-	// ÕâÀï¾ÍÖ±½ÓĞ´ÁË
-	//µÇÂ¼ ÊÇË³±ã»ñÈ¡½ÇÉ«id ºÍÕËºÅid
+    private DatabaseConnect db;
+    private ResultSet rs;
+    private final setActionListener setlis = new setActionListener();
+    private Vector<String> cmbTable;
+    private int account_id = 0;
+    private int table_id = 0;
+    private int screen_height;
+    private int screen_width;
+    private static final int log_height = 300;
+    private static final int log_width = 200;
+    private static final int height = 600;
+    private static final int width = 600;
 
-	private Boolean log() {
-		try {
-			db = new DatabaseConnect();
-			if (!db.connect("127.0.0.1:1521", "orcl", "scott", "tiger"))
-				return false;
+    private static final long serialVersionUID = 1L;
 
-			logDialog log;
+    public view() throws Exception {
+        Dimension screensize = Toolkit.getDefaultToolkit().getScreenSize();
+        screen_width = (int) screensize.getWidth();
+        screen_height = (int) screensize.getHeight();
 
-			log = new logDialog();
-			
-			if (log.showdia(this, "µÇÂ¼")) {
-				int[] id = db.logByAccount(log.getUserName(), log.getPassword().toString());
-				if(id==null)return false;
-				role_id=id[0];
-				account_id=id[1];
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
-		return true;
-	}
+        if (log()) {
+            initFrame();
+            addListener();
+            setVisible(true);
+        } else {
+            JOptionPane.showMessageDialog(null, "ä½ çš„è´¦å·/å¯†ç é”™è¯¯", "+_+",
+                    JOptionPane.ERROR_MESSAGE);
+            System.exit(0);
+        }
+    }
 
-	final void initFrame() 
-	{
-		setFeel(plaf);
-		setTitle("²éÑ¯");
-		setLayout(new BorderLayout());
-		setSize(600, 600);	
-		JPanel head=new JPanel();
-		head.setLayout(new GridLayout(2,1));
-		JPanel tmp=new JPanel();
-		tmp.add(new JLabel("Ñ¡Ôñ±í"));
-		table = new JComboBox<String>();
-		table.setPreferredSize(new Dimension(120, 20));
-		tmp.add(table);
-		tmp.add(new JLabel("Ñ¡ÔñÒÑÓĞµÄÉèÖÃ"));
-		set = new JComboBox<String>();
-		set.setPreferredSize(new Dimension(120, 20));
-		tmp.add(set);
-		save = new JButton("ĞÂÔöÉèÖÃ");
-		tmp.add(save);
-		delete = new JButton("É¾³ıÉèÖÃ");
-		tmp.add(delete);
-		head.add(tmp);
-		tmp=new JPanel();
-		tmp.add(new JLabel("Ñ¡ÔñÏÔÊ¾ÏîºÍÉèÖÃ²éÑ¯Ìõ¼ş"));
-		selectall = new JButton("È«Ñ¡");
-		selectnone = new JButton("È«²»Ñ¡");
-		tmp.add(selectall);
-		tmp.add(selectnone);
-		head.add(tmp);
-		add(head,BorderLayout.NORTH);
-		
-		contentPanel = new JPanel();
-		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-	    JScrollPane	jsc = new JScrollPane(contentPanel);
-		add(jsc,BorderLayout.CENTER);
-		
-		confirm = new JButton("È·¶¨");
-		JPanel footer = new JPanel();		
-		footer.add(confirm);
-		add(footer,BorderLayout.SOUTH);
-	}
-	
-	private void loadTable()
-	{
-		table.removeAllItems();
-		ArrayList<String>list=db.getTableList(role_id);
-		for(int i=0;i<list.size();i++)
-		{
-			table.addItem(list.get(i));
-		}	
-	}
-	private void loadUserSet()
-	{
-		set.removeAllItems();
-		ArrayList<String>list=db.getSetname(account_id);
-		for(int i=0;i<list.size();i++)
-		{
-			set.addItem(list.get(i));
-		}		
-	}
-	
-	private void addListener() throws Exception {
-		loadTable();
-		loadUserSet();
-		//µ±±í±»Ñ¡ÖĞÊ±¼ÓÔØÁĞ
-		table.addActionListener(new ActionListener() {
+    private Boolean log() {
+        try {
 
-			public void actionPerformed(ActionEvent arg0) {
-				try {
-				table_id = db.getTableid((String) table.getSelectedItem());
-						
-				ArrayList<String>list=db.getcollist(role_id,table_id);
-				
-				contentPanel.removeAll();
-				for(int i=0;i<list.size();i++)
-				{
-					contentPanel.add(new item("N",list.get(i), "", ""));
-				}
-				contentPanel.updateUI();
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}	
-			}
-		});
-		//È«Ñ¡¾ÍÊÇ°ÑÈ«²¿ÁĞÑ¡ÖĞ
-		selectall.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				Component[] comp = contentPanel.getComponents();
-				item item;
-				for (Component c : comp)
-				{
-					item = (item) c;
-					item.select(true);
-				}
-				contentPanel.updateUI();
-			}
-		});
+            String[] lo = RegistUtil.read();
+            if (lo[0].equals("Oracle")) {
+                db = new DBOracle();
+                if (!db.connect(lo[1], lo[2], lo[3], lo[4])) {
+                    return false;
+                }
+            } else {
+                db = new DBSqlServer();
+                if (!db.connect(lo[1], lo[2], lo[3], lo[4])) {
+                    return false;
+                }
+            }
+            logDialog log = new logDialog(screen_width / 2 - (log_width / 2), screen_height / 2 - (log_height / 2), log_width, log_height);
 
-		selectnone.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				item item;
-				Component[] comp = contentPanel.getComponents();
-				for (Component c : comp) {
-					item = (item) c;
-					item.select(false);
-				}
-				contentPanel.updateUI();
-			}
-		});
-		//µ±ÓÃ»§ÉèÖÃ±»Ñ¡ÖĞÊ± ÏÈ»ñÈ¡ÉèÖÃµÄ±íÃû ½«±íÃûÏÂÀ­¿òÉèÖÃÎªÑ¡ÖĞ
-		//È»ºó¸ù¾İ±íÃûµÃµ½ÁĞÃû ¸ù¾İ ÓÃ»§ÉèÖÃ¸üĞÂÑ¡ÖĞ×´Ì¬ ²éÑ¯Ìõ¼ş
-		set.addActionListener(setlis);
+            int state = log.showdia(this, "ç™»å½•");
+            if (state == 1) {
+                int id = db.logByAccount(log.getUserName(), log.getPassword().toString());
+                if (id != -1) {
+                    account_id = id;
+                } else {
+                    return false;
+                }
+            } else {
+                System.exit(0);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
 
-		//±£´æÉèÖÃ µ¯³ö¿òÊäÈëÉèÖÃÃû
-		//±éÀúÁĞÃû ±£´æÉèÖÃ
-		//±£´æÉèÖÃÊÂÏÈÉ¾³ıÊı¾İ¿âÖĞÖ®Ç°µÄÉèÖÃ  ÒòÎªÅĞ¶ÏºÜ·±Ëö
-		save.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				try {
-						Component[] comp = contentPanel.getComponents();
-						if (comp.length==0)
-						{
-							JOptionPane.showMessageDialog(null, "Î´Ñ¡Ôñ±í", "Warnning",JOptionPane.ERROR_MESSAGE);
-						} else
-						{
-							String setname = null;
-							setname = JOptionPane.showInputDialog("ÊäÈë´Ë²éÑ¯ÉèÖÃÃû");
-							if (setname == null || setname.equals(""))
-							{
-								JOptionPane.showMessageDialog(null, "ÉèÖÃÃû²»ÄÜÎª¿Õ","Warnning", JOptionPane.ERROR_MESSAGE);
-							}else 
-							{
-								item item;
-								db.deletequerycondition(account_id,setname);
-								for (Component c : comp)
-								{
-									item= (item) c;
-									db.setquerycondition(account_id,table_id,item.getjck(),setname, item.getcolname(),item.getcon1(), item.getcon2());
-								}
-							}
-							set.addItem(setname);
-						}
-				}
-				catch (SQLException e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		//É¾³ıÓÃ»§ÉèÖÃ ¾ÍÊÇÉ¾³ı
-		delete.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				try {
-					db.deletequerycondition(account_id,set.getSelectedItem().toString());
-					set.removeActionListener(setlis);
-					set.removeItem(set.getSelectedItem().toString());
-					contentPanel.removeAll();
-					contentPanel.updateUI();
-					} catch (SQLException e)
-					{
-						e.printStackTrace();
-					}
-			}
-		});
+    final void initFrame() {
+        setFeel(plaf);
+        setTitle("æŸ¥è¯¢");
+        setLayout(new BorderLayout());
+        setSize(600, 600);
+        JPanel head = new JPanel();
+        head.setLayout(new GridLayout(2, 1));
+        JPanel tmp = new JPanel();
+        tmp.add(new JLabel("é€‰æ‹©è¡¨"));
+        table = new JComboBox<String>();
+        table.setPreferredSize(new Dimension(120, 20));
+        tmp.add(table);
+        tmp.add(new JLabel("é€‰æ‹©å·²æœ‰çš„è®¾ç½®"));
+        set = new JComboBox<>();
+        set.setPreferredSize(new Dimension(120, 20));
+        tmp.add(set);
+        save = new JButton("ä¿å­˜è®¾ç½®");
+        tmp.add(save);
+        delete = new JButton("åˆ é™¤è®¾ç½®");
+        tmp.add(delete);
+        head.add(tmp);
+        tmp = new JPanel();
+        tmp.add(new JLabel("é€‰æ‹©æ˜¾ç¤ºé¡¹å’Œè®¾ç½®æŸ¥è¯¢æ¡ä»¶"));
+        selectall = new JButton("å…¨é€‰");
+        selectnone = new JButton("å…¨ä¸é€‰");
+        tmp.add(selectall);
+        tmp.add(selectnone);
+        head.add(tmp);
+        add(head, BorderLayout.NORTH);
 
-		//µãÈ·¶¨µÄÊ±ºò±éÀúÁĞÃû Éú³ÉsqlÓï¾ä µ¯³öÒ»¸ö´°¿ÚÏÔÊ¾±í
-		confirm.addActionListener(new ActionListener()
-		{
-			public void actionPerformed(ActionEvent arg0)
-			{
-				try {
-				item item;
-				ArrayList<String> column = new ArrayList<String>();
-				ArrayList<String> query = new ArrayList<String>();
-				Component[] comp = contentPanel.getComponents();
-				for (Component c : comp)
-				{
-					item = (item) c;
-					if (item.isSelect())
-					{
-						column.add(item.getcolname());
-						query.add(item.getsql());
-					}
-				}
-				rs = db.getresultTable(column,query,table_id);
-				ArrayList<ArrayList<String>>tabledata=new ArrayList<ArrayList<String>>();
-				while (rs.next()) 
-				{
-					ArrayList<String> col = new ArrayList<String>();
-					for (int i = 0; i < column.size(); i++)
-					{
-						col.add(rs.getString(i + 1));
-					}
-					tabledata.add(col);
-				}
-				resultFrame res= new resultFrame(table_id,column,query,tabledata);
-				res.setDefaultCloseOperation(HIDE_ON_CLOSE);
-				res.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-	}
+        contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        JScrollPane jsc = new JScrollPane(contentPanel);
+        add(jsc, BorderLayout.CENTER);
 
-	final void setFeel(String f) {
-		try {
-			UIManager.setLookAndFeel(f);
-			SwingUtilities.updateComponentTreeUI(this);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	public static void main(String[] args) throws Exception {
-		view frame = new view();
-		frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
-		frame.setVisible(true);
-	}
-
-	class resultFrame extends JFrame
-	{	
-		private static final long serialVersionUID = 1L;
-		private JComboBox<String> hz=null;
-		private JComboBox<String> tj=null;
-		private JButton confirm=null;
-		private JButton output=null;
-		private JTable table=null;
-		private export ex=null;
-		JScrollPane jsc=null;
-		resultFrame(final int table_id,final ArrayList<String>  columnt,final ArrayList<String> query,ArrayList<ArrayList<String>> tabledata)
-		{
-			setLayout(new BorderLayout());
-			setTitle("²éÑ¯½á¹û");
-			setSize(600, 700);
-			setResizable(true);
-			JPanel foot=new JPanel();
-			foot.setLayout(new FlowLayout());
-			hz = new JComboBox<String>();
-			hz.setPreferredSize(new Dimension(120, 20));
-			tj = new JComboBox<String>();
-			tj.setPreferredSize(new Dimension(120, 20));
-			foot.add(new JLabel("»ã×ÜÏî(ÊıÖµ)"));
-			foot.add(hz);
-			foot.add(new JLabel("Í³¼ÆÏî"));
-			foot.add(tj);
-			confirm= new JButton("Í³¼ÆÈ·¶¨");
-			foot.add(confirm);
-			output = new JButton("Í³¼ÆÊä³ö");
-			foot.add(output);
-			add(foot, BorderLayout.SOUTH);
-			hz.addItem("ÇëÑ¡Ôñ");
-			tj.addItem("ÇëÑ¡Ôñ");
-			for (int i = 0; i < columnt.size(); i++) {
-				hz.addItem(columnt.get(i).toString());
-				tj.addItem(columnt.get(i).toString());
-			}
-			table=new JTable(new groupTable(columnt,tabledata));
-			jsc = new JScrollPane(table);
-			
-			add(jsc, BorderLayout.CENTER);
-
-			output.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent arg0) {
-					outExcel();
-				}
-			});
-			confirm.addActionListener(new ActionListener() {
-
-				public void actionPerformed(ActionEvent arg0) {
-					if (hz.getSelectedIndex() == 0
-							&& tj.getSelectedIndex() == 0) {
-						outExcel();
-					}
-					try {
-						String hzx = hz.getSelectedItem().toString();
-						String tjx = tj.getSelectedItem().toString();
-						String hzxsql="";
-						String tjxsql="";
-						int count=0;
-						
-						for(int i=0;i<columnt.size();i++)
-						{
-							if(count==2)break;
-							if(columnt.get(i).equals(hzx))
-							{
-								hzxsql=query.get(i);
-								count++;
-							}
-							else if(columnt.get(i).equals(tjx))
-							{
-								tjxsql=query.get(i);
-								count++;
-							}
-							
-						}
-						
-						ArrayList<ArrayList<String>> data=db.getGroup(table_id,hzx,hzxsql,tjx,tjxsql);
-						ArrayList<String>col=new ArrayList<String>();
-						col.add(hzx);
-						col.add(tjx+"»ã×Ü");
-
-					//	jsc.remove(table);
-						table=new JTable(new groupTable(col,data));						
-					//	jsc.add(table);
-						remove(jsc);
-						jsc = new JScrollPane(table);
-						add(jsc,BorderLayout.CENTER);
-//						table.paintImmediately(table.getBounds());
-						//table.repaint();
-						//jsc.repaint();
-						resultFrame.this.setVisible(true);
-						//jsc.getParent().repaint();
-
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-			});
-
-		}
-
-		final void setFeel(String f) {
-			try {
-				UIManager.setLookAndFeel(f);
-				SwingUtilities.updateComponentTreeUI(this);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		private void outExcel() {
-			ex = new export(table);
-			ex.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-			ex.setVisible(true);
-		}
-	}
+        confirm = new JButton("æŸ¥çœ‹");
+        out = new JButton("è¾“å‡º");
+        JPanel footer = new JPanel();
+        footer.add(confirm);
+        footer.add(out);
 
 
-	class setActionListener implements ActionListener
-	{
+        add(footer, BorderLayout.SOUTH);
+        setBounds((screen_width - width) / 2, (screen_height - height) / 2, width, height);
 
-		public void actionPerformed(ActionEvent arg0) {
-			try {
-				System.out.println("here");
-				String setname = (String) set.getSelectedItem();
-			 	String tablename = db.gettablename(setname,account_id);
-			 	System.out.println(setname+" "+tablename);
-			 	table.setSelectedItem(tablename);
-				
-			 	ArrayList<String>list=db.getcollist(role_id,table_id);
-				System.out.println(list.size());
-				contentPanel.removeAll();
-				for(int i=0;i<list.size();i++)
-				{
-					String columnname=list.get(i);
-					String[]set=db.getquerycondition(account_id,table_id,setname,columnname);
-					item item=new item(set[0],columnname,set[1],set[2]);
-					contentPanel.add(item);
-				}
-				contentPanel.updateUI();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-		}
-	}
+    }
+
+    private void loadTable() {
+        table.removeAllItems();
+        ArrayList<String> list = db.getTableList(account_id);
+        for (int i = 0; i < list.size(); i++) {
+            table.addItem(list.get(i));
+        }
+    }
+
+    private void loadUserSet() {
+        set.removeAllItems();
+        ArrayList<String> list = db.getSetname(account_id);
+        for (int i = 0; i < list.size(); i++) {
+            set.addItem(list.get(i));
+        }
+    }
+
+    private void addListener() throws Exception {
+        loadTable();
+        loadUserSet();
 
 
+        //å½“è¡¨è¢«é€‰ä¸­æ—¶åŠ è½½åˆ—
+        table.addActionListener(new ActionListener() {
+
+            public void actionPerformed(ActionEvent arg0) {
+                try {
+                    table_id = db.getTableid((String) table.getSelectedItem());
+                    ArrayList<String> list = db.getcollist(account_id, table_id);
+                    contentPanel.removeAll();
+                    for (int i = 0; i < list.size(); i++) {
+                        contentPanel.add(new item("N", list.get(i), "", ""));
+                    }
+                    contentPanel.updateUI();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        if (table.getSelectedItem() != null) {
+            table.setSelectedItem(table.getSelectedItem().toString());
+        }
+
+        //å…¨é€‰å°±æ˜¯æŠŠå…¨éƒ¨åˆ—é€‰ä¸­
+        selectall.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent arg0) {
+                Component[] comp = contentPanel.getComponents();
+                item item;
+                for (Component c : comp) {
+                    item = (item) c;
+                    item.select(true);
+                }
+                contentPanel.updateUI();
+            }
+        });
+
+        selectnone.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent arg0) {
+                item item;
+                Component[] comp = contentPanel.getComponents();
+                for (Component c : comp) {
+                    item = (item) c;
+                    item.select(false);
+                }
+                contentPanel.updateUI();
+            }
+        });
+
+        //å½“ç”¨æˆ·è®¾ç½®è¢«é€‰ä¸­æ—¶ å…ˆè·å–è®¾ç½®çš„è¡¨å å°†è¡¨åä¸‹æ‹‰æ¡†è®¾ç½®ä¸ºé€‰ä¸­
+        //ç„¶åæ ¹æ®è¡¨åå¾—åˆ°åˆ—å æ ¹æ® ç”¨æˆ·è®¾ç½®æ›´æ–°é€‰ä¸­çŠ¶æ€ æŸ¥è¯¢æ¡ä»¶
+        set.addActionListener(setlis);
+
+        //ä¿å­˜è®¾ç½®
+        //éå†åˆ—å ä¿å­˜è®¾ç½®
+        save.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent arg0) {
+                String name = JOptionPane.showInputDialog("è¯·è¾“å…¥è®¾ç½®å");
+                System.out.println(db.hasSetname(account_id, name) + ":" + name + ":" + account_id);
+                if (name != null && !name.trim().equals("") && !db.hasSetname(account_id, name)) {
+                    Component[] comp = contentPanel.getComponents();
+                    if (comp.length == 0) {
+                        JOptionPane.showMessageDialog(null, "æœªé€‰æ‹©è¡¨", "Warnning", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    } else {
+                        item item;
+                        for (Component c : comp) {
+                            item = (item) c;
+                            try {
+                                table_id = db.getTableid((String) table.getSelectedItem());
+                            } catch (SQLException e) {
+                                e.printStackTrace();
+                            }
+                            db.setquerycondition(account_id, table_id, name, item.getcolname(), item.getjck(), item.getcon1(), item.getcon2());
+                        }
+                    }
+                    set.addItem(name);
+                } else {
+                    JOptionPane.showMessageDialog(null, "è®¾ç½®åä¸èƒ½ä¸ºç©º ä¸èƒ½é‡å¤", "Warnning", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+        });
 
 
+        //åˆ é™¤ç”¨æˆ·è®¾ç½® å°±æ˜¯åˆ é™¤
+        delete.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent arg0) {
+                if (set.getSelectedItem() == null) {
+                    JOptionPane.showMessageDialog(null, "å½“å‰æ²¡æœ‰å¯ä»¥åˆ é™¤çš„è®¾ç½®", "Warnning", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
 
 
+                db.deletequerycondition(account_id, set.getSelectedItem().toString());
+                set.removeActionListener(setlis);
+                set.removeItem(set.getSelectedItem().toString());
+                contentPanel.removeAll();
+                contentPanel.updateUI();
+            }
+        });
+
+        //ç‚¹ç¡®å®šçš„æ—¶å€™éå†åˆ—å ç”Ÿæˆsqlè¯­å¥ å¼¹å‡ºä¸€ä¸ªçª—å£æ˜¾ç¤ºè¡¨
+        confirm.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent arg0) {
+                try {
+                    item item;
+                    ArrayList<String> column = new ArrayList<String>();
+                    ArrayList<String> query = new ArrayList<String>();
+                    Component[] comp = contentPanel.getComponents();
+                    for (Component c : comp) {
+                        item = (item) c;
+                        if (item.isSelect()) {
+                            column.add(item.getcolname());
+                            query.add(item.getsql());
+                        }
+                    }
+                    rs = db.getresultTable(column, query, table_id);
+
+                    ArrayList<ArrayList<String>> tabledata = new ArrayList<ArrayList<String>>();
+                    while (rs.next()) {
+                        ArrayList<String> col = new ArrayList<String>();
+                        for (int i = 0; i < column.size(); i++) {
+                            col.add(rs.getString(i + 1));
+                        }
+                        tabledata.add(col);
+                    }
+                    resultFrame res = new resultFrame(table_id, column, query, tabledata);
+                    res.setDefaultCloseOperation(HIDE_ON_CLOSE);
+                    res.setVisible(true);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        out.addActionListener(new ActionListener() {
+
+            public void actionPerformed(ActionEvent arg0) {
+
+                try {
 
 
+                    item item;
+                    ArrayList<String> column = new ArrayList<String>();
+                    ArrayList<String> query = new ArrayList<String>();
+
+                    Component[] comp = contentPanel.getComponents();
+                    for (Component c : comp) {
+                        item = (item) c;
+                        if (item.isSelect()) {
+                            column.add(item.getcolname());
+                            query.add(item.getsql());
+                        }
+                    }
+                    rs = db.getresultTable(column, query, table_id);
+
+                    ArrayList<ArrayList<String>> tabledata = new ArrayList<ArrayList<String>>();
+                    while (rs.next()) {
+                        ArrayList<String> col = new ArrayList<String>();
+                        for (int i = 0; i < column.size(); i++) {
+                            col.add(rs.getString(i + 1));
+                        }
+                        tabledata.add(col);
+                    }
+
+                    JTable t = new JTable(new groupTable(column, tabledata));
+
+                    export ex = new export(t);
+                    ex.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+                    ex.setVisible(true);
+                } catch (Exception e) {
+                }
 
 
+            }
+        });
+    }
 
+    final void setFeel(String f) {
+        try {
+            UIManager.setLookAndFeel(f);
+            SwingUtilities.updateComponentTreeUI(this);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
+    public static void main(String[] args) throws Exception {
+        view frame = new view();
+        frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
+        frame.setVisible(true);
+    }
 
+    class resultFrame extends JFrame {
+        private static final long serialVersionUID = 1L;
+        private JComboBox<String> hz = null;
+        private JComboBox<String> tj = null;
+        private JButton confirm = null;
+        private JButton output = null;
+        private JTable table = null;
+        private export ex = null;
+        JScrollPane jsc = null;
 
-}
+        resultFrame(final int table_id, final ArrayList<String> columnt, final ArrayList<String> query, ArrayList<ArrayList<String>> tabledata) {
+            setLayout(new BorderLayout());
+            setTitle("æŸ¥è¯¢ç»“æœ");
+            setSize(600, 700);
+            setResizable(true);
+            JPanel foot = new JPanel();
+            foot.setLayout(new FlowLayout());
+            hz = new JComboBox<>();
+            hz.setPreferredSize(new Dimension(120, 20));
+            tj = new JComboBox<>();
+            tj.setPreferredSize(new Dimension(120, 20));
+            foot.add(new JLabel("æ±‡æ€»é¡¹(æ•°å€¼)"));
+            foot.add(hz);
+            foot.add(new JLabel("ç»Ÿè®¡é¡¹"));
+            foot.add(tj);
+            confirm = new JButton("ç»Ÿè®¡ç¡®å®š");
+            foot.add(confirm);
+            output = new JButton("ç»Ÿè®¡è¾“å‡º");
+            foot.add(output);
+            add(foot,BorderLayout.SOUTH);
+            hz.addItem("è¯·é€‰æ‹©");
+            tj.addItem("è¯·é€‰æ‹©");
+            for (int i = 0; i < columnt.size(); i++) {
+                hz.addItem(columnt.get(i).toString());
+                tj.addItem(columnt.get(i).toString());
+            }
+            table = new JTable(new groupTable(columnt, tabledata));
+            jsc = new JScrollPane(table);
+
+            add(jsc, BorderLayout.CENTER);
+
+            output.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent arg0) {
+                    outExcel();
+                }
+            });
+            confirm.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent arg0) {
+                    if (hz.getSelectedIndex() == 0
+                            && tj.getSelectedIndex() == 0) {
+                        return;
+                    }
+                    try {
+                        String hzx = hz.getSelectedItem().toString();
+                        String tjx = tj.getSelectedItem().toString();
+                        String hzxsql = "";
+                        String tjxsql = "";
+                        int count = 0;
+                        for (int i = 0; i < columnt.size(); i++) {
+                            if (count == 2) break;
+                            if (columnt.get(i).equals(hzx)) {
+                                hzxsql = query.get(i);
+                                count++;
+                            } else if (columnt.get(i).equals(tjx)) {
+                                tjxsql = query.get(i);
+                                count++;
+                            }
+                        }
+                        //*---------------------------------éœ€è¦å¤„ç†
+                        ArrayList<ArrayList<String>> data = db.getGroup(table_id, hzx, hzxsql, tjx, tjxsql);
+                        ArrayList<String> col = new ArrayList<>();
+                        col.add(tjx);
+                        col.add(hzx + "æ±‡æ€»");
+
+                        table = new JTable(new groupTable(col, data));
+                        remove(jsc);
+                        jsc = new JScrollPane(table);
+                        add(jsc, BorderLayout.CENTER);
+                        resultFrame.this.setVisible(true);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+
+        }
+
+        final void setFeel(String f) {
+            try {
+                UIManager.setLookAndFeel(f);
+                SwingUtilities.updateComponentTreeUI(this);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void outExcel() {
+            ex = new export(table);
+            ex.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+            ex.setVisible(true);
+        }
+    }
+
+    class setActionListener implements ActionListener {
+        public void actionPerformed(ActionEvent arg0) {
+            try {
+                String setname = (String) set.getSelectedItem();
+                System.out.println("é€‰æ‹©é…ç½®çš„æ¡ä»¶ï¼šsetname= " + setname + "   account_id= " + account_id);
+                String tablename = db.gettablename(setname, account_id);
+                System.out.println("é€‰æ‹©é…ç½®çš„ç»“æœï¼štablename= " + tablename);
+                table.setSelectedItem(tablename);
+                Component[] com = contentPanel.getComponents();
+                for (int i = 0; i < com.length; i++) {
+                    item item = (item) com[i];
+                    String[] set = db.getquerycondition(account_id, table_id, setname, item.getcolname());
+                    item.select(set[0].equals("Y") ? true : false);
+                    item.setcon1(set[1]);
+                    item.setcon2(set[2]);
+                    //System.out.println(set[0]+set[1]+set[2]);
+                }
+                contentPanel.updateUI();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+} 
