@@ -3,19 +3,21 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Properties;
 
-public class DBOracle implements DatabaseConnect{
+public class DBOracle implements Database {
     Connection con = null;// 创建一个数据库连接
     PreparedStatement pre = null;// 创建预编译语句对象，一般都是用这个而不用Statement
     ResultSet result = null;// 创建一个结果集对象
 
-    public Boolean connect(String user, String password, String address, String databasename) {
+    public Boolean connect() {
+        System.out.println(" --------------------      connect    DBOracle      -------------------------");
+        String[] database = RegistUtil.read();
         try {
             Class.forName("oracle.jdbc.driver.OracleDriver");// 加载Oracle驱动程序
-            String url = "jdbc:oracle:" + "thin:@" + address + "/" + databasename;// 127.0.0.1是本机地址， orcl是你的数据库名
+            String url = "jdbc:oracle:" + "thin:@" + database[3] + "/" + database[4];// 127.0.0.1是本机地址， orcl是你的数据库名
 
             Properties common = new Properties();
-            common.put("user", user);
-            common.put("password", password);
+            common.put("user", database[1]);
+            common.put("password", database[2]);
             con = DriverManager.getConnection(url, common);
             if (!con.prepareStatement("select table_name from user_tables where table_name='QUERYCONDITION'").executeQuery().next()) {
                 JOptionPane.showMessageDialog(null, "数据库错误", "+_+", JOptionPane.ERROR_MESSAGE);
@@ -27,7 +29,7 @@ public class DBOracle implements DatabaseConnect{
         return true;
     }
 
-     public boolean isRootAccount(int account_id) {
+    public boolean isRootAccount(int account_id) {
         try {
             pre = con.prepareStatement(isRootAccount);
 
@@ -61,16 +63,23 @@ public class DBOracle implements DatabaseConnect{
         }
     }
 
-    public int getTableid(String tablename) throws SQLException {
-        pre = con.prepareStatement(getTableid);
-        pre.setString(1, tablename);
-        result = pre.executeQuery();
-        if (result.next())
-            return result.getInt(1);
-        else return -1;
+    public int getTableid(String tablename) {
+        String getTableid = "select table_id from tablename where adorn_name=?";
+        try {
+            pre = con.prepareStatement(getTableid);
+            pre.setString(1, tablename);
+            result = pre.executeQuery();
+            if (result.next())
+                return result.getInt(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return -1;
     }
 
+    //需要处理
     public ResultSet getsetedcollist(String setname, int account_id) throws SQLException {
+        String getsetedcollistSql = "select focus,colname,con1,con2 from querycondition where querycondition.setname=? and account_id=? ";
         pre = con.prepareStatement(getsetedcollistSql);
         pre.setString(1, setname);
         pre.setInt(2, account_id);
@@ -113,7 +122,7 @@ public class DBOracle implements DatabaseConnect{
         }
     }
 
-     public String getcolumnname(int table_id, String colname) throws SQLException {
+    public String getcolumnname(int table_id, String colname) throws SQLException {
         pre = con.prepareStatement(getcolumnname);
         pre.setInt(1, table_id);
         pre.setString(2, colname);
@@ -192,16 +201,21 @@ public class DBOracle implements DatabaseConnect{
     }
 
 
-    public int logByAccount(String userName, String password) throws SQLException {
+    public int logByAccount(String userName, String password) {
         int id;
-        pre = con.prepareStatement(loginSql);
-        pre.setString(1, userName);
-        pre.setString(2, password);
-        result = pre.executeQuery();
-        if (result.next()) {
-            id = result.getInt(1);
-            return id;
-        } else return -1;
+        try {
+            pre = con.prepareStatement(loginSql);
+            pre.setString(1, userName);
+            pre.setString(2, password);
+            result = pre.executeQuery();
+            if (result.next()) {
+                id = result.getInt(1);
+                return id;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return -1;
     }
 
     public ArrayList<String> getTableList(int account_id) {
@@ -261,7 +275,7 @@ public class DBOracle implements DatabaseConnect{
         return column;
     }
 
-     public String getcolumn(String column, int table_id) {
+    public String getcolumn(String column, int table_id) {
         try {
             pre = con.prepareStatement(getcolumn);
             pre.setInt(1, table_id);
@@ -305,7 +319,7 @@ public class DBOracle implements DatabaseConnect{
     }
 
 
-     public String getUnadornColumnByadorn(int table_id, String col) throws SQLException {
+    public String getUnadornColumnByadorn(int table_id, String col) throws SQLException {
         pre = con.prepareStatement(getUnadornColumnByadorn);
         pre.setInt(1, table_id);
         pre.setString(2, col);
@@ -314,7 +328,7 @@ public class DBOracle implements DatabaseConnect{
         return null;
     }
 
-     public String getUnadornTablenameById(int table_id) throws SQLException {
+    public String getUnadornTablenameById(int table_id) throws SQLException {
         pre = con.prepareStatement(getUnadornTablenameById);
         pre.setInt(1, table_id);
         result = pre.executeQuery();
@@ -356,15 +370,50 @@ public class DBOracle implements DatabaseConnect{
         }
         return false;
     }
-//需要处理
+
     @Override
-    public boolean getTypeColumn(String s, int table_id) {
+    public boolean getTypeColumn(String column, int table_id) {
+        String sql = " select data_type from user_tab_columns  c , user_objects  o " +
+                " where c.table_name=o.object_name " +
+                "AND c.column_name=? AND o.object_id =?";
+        try {
+            pre = con.prepareStatement(sql);
+            pre.setString(1, column.toUpperCase());
+            pre.setInt(2, table_id);
+            ResultSet result = pre.executeQuery();
+            if (result.next()) {
+                String s = result.getString(1);
+                System.out.println("column=" + column + "   type=>" + s);
+                if (s.equalsIgnoreCase("int") || s.equalsIgnoreCase("double") || s.equalsIgnoreCase("decimal") || s.equalsIgnoreCase("number")) {
+                    result.close();
+                    return true;
+                }
+                result.close();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
         return false;
+    }
+
+    @Override
+    public String getColumnName(String s) {
+        try {
+            pre = con.prepareStatement("  select COLUMN_NAME from columnname   where adorn_name=?");
+            pre.setString(1, s);
+            ResultSet result = pre.executeQuery();
+            if (result.next()) {
+                return result.getString(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 
     private final static String getcollistSql = "select c.adorn_name from columnname c where c.table_id=? and c.column_name in (select r.column_name from rolepermission r where r.role_id in (select role_id from roleaccount where account_id=?) and r.table_id=?) order by c.no";
-    private final static String getsetedcollistSql = "select focus,colname,con1,con2 from querycondition where querycondition.setname=? and account_id=? ";
 
     private final static String gettablenameSql = "select adorn_name from tablename where table_id in (select distinct table_id from querycondition where setname=? and account_id=?)";
 
@@ -378,8 +427,6 @@ public class DBOracle implements DatabaseConnect{
     private final static String isRootAccount = "select role_name from role where role_id in (select role_id from roleaccount where account_id=?)";
 
     private final static String getTablelist = "select distinct adorn_name from tablename where table_id in (select  distinct table_id from rolepermission where role_id in (select role_id from roleaccount where account_id=?))";
-
-    private final static String getTableid = "select table_id from tablename where adorn_name=?";
 
     private final static String getcolumnname = "select column_name from columnname where table_id=? and adorn_name=?";
 

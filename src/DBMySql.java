@@ -1,7 +1,8 @@
+import tool.L;
+
 import javax.swing.*;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Properties;
 
 // customers
 //drink_info
@@ -13,33 +14,29 @@ import java.util.Properties;
 //toys
 //Vendors
 //
-public class DBSqlServer implements Database {
+public class DBMySql implements Database {
     Connection con = null;// 创建一个数据库连接
-    PreparedStatement pre = null;// 创建预编译语句对象，一般都是用这个而不用Statement
-    ResultSet result = null;// 创建一个结果集对象
 
-
-    //******************************
+    //true
     public Boolean connect() {
-        String[] database = RegistUtil.read();
-        System.out.println(" --------------------      connect    DBSqlServer      -------------------------");
+        String[] dba = RegistUtil.read();
+        L.pr(dba);
         try {
-            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");// 加载Oracle驱动程序
-            String dbURL = "jdbc:sqlserver://" + database[3] + ":1433;DatabaseName= " + database[4];
-            Properties common = new Properties();
-            common.put("user", database[1]);
-            common.put("password", database[2]);
-            con = DriverManager.getConnection(dbURL, common);
+            String url = "jdbc:mysql://" + dba[3] + ":3306/" + dba[4] + "?useUnicode=true&characterEncoding=UTF-8";
+            Class.forName("com.mysql.jdbc.Driver");
+            con = DriverManager.getConnection(url, dba[1], dba[2]);
+            System.out.println(" --------------------      connect    DBMySql    succeed  -------------------------");
         } catch (Exception e) {
+            e.printStackTrace();
             JOptionPane.showMessageDialog(null, "数据库错误", "+_+", JOptionPane.ERROR_MESSAGE);
             System.exit(0);
-            e.printStackTrace();
         }
         return true;
     }
 
-    //****************************
+    //true
     public boolean isRootAccount(int account_id) {
+        PreparedStatement pre;
         try {
             pre = con.prepareStatement("select role_name from role where role_id in (select role_id from roleaccount where account_id=?)");
             pre.setInt(1, account_id);
@@ -52,8 +49,10 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //****************************
+    //true
     public ArrayList<String> getcollist(int account_id, int table_id) {
+        PreparedStatement pre;
+        ResultSet result = null;
         String sql = "select c.adorn_name from columnname c where c.table_id=? and c.column_name in (select r.column_name from rolepermission r where r.role_id in (select role_id from roleaccount where account_id=?) and r.table_id=?) order by c.no";
         ArrayList<String> list = new ArrayList<String>();
         try {
@@ -72,12 +71,13 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //**********************************
+    //true
     public int getTableid(String tablename) {
+        PreparedStatement pre;
         try {
             pre = con.prepareStatement("select table_id from tablename where adorn_name=?");
             pre.setString(1, tablename);
-            result = pre.executeQuery();
+            ResultSet result = pre.executeQuery();
             if (result.next())
                 return result.getInt(1);
         } catch (SQLException e) {
@@ -88,6 +88,7 @@ public class DBSqlServer implements Database {
 
     //需要处理
     public ResultSet getsetedcollist(String setname, int account_id) {
+        PreparedStatement pre;
         String getsetedcollistSql = "select focus,colname,con1,con2 from querycondition where querycondition.setname=? and account_id=? ";
         try {
             pre = con.prepareStatement(getsetedcollistSql);
@@ -100,8 +101,9 @@ public class DBSqlServer implements Database {
         return null;
     }
 
-    //*************************************************
+    //true
     public void setquerycondition(int account_id, int table_id, String setName, String colname, String select, String con1, String con2) {
+        PreparedStatement pre;
         try {
             //insert into querycondition(account_id,table_id,setname,column_name,flag,con1,con2)"
             String column_name = getcolumnname(table_id, colname);
@@ -119,8 +121,8 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //**************************************
     public void deletequerycondition(int account_id, String setname) {
+        PreparedStatement pre;
         try {
             pre = con.prepareStatement("delete from querycondition where account_id=? and setname=?");
             pre.setInt(1, account_id);
@@ -131,13 +133,13 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //******************************
     public String getcolumnname(int table_id, String colname) {
+        PreparedStatement pre;
         try {
             pre = con.prepareStatement("select column_name from columnname where table_id=? and adorn_name=?");
             pre.setInt(1, table_id);
             pre.setString(2, colname);
-            result = pre.executeQuery();
+            ResultSet result = pre.executeQuery();
             if (result.next())
                 return result.getString(1);
         } catch (SQLException e) {
@@ -146,12 +148,10 @@ public class DBSqlServer implements Database {
         return null;
     }
 
-    //************************************
     public String getEnglishTablenameById(int table_id) {
         String trSql = "select table_name from tablename where table_id='" + table_id + "'";
-
         try {
-            result = con.prepareStatement(trSql).executeQuery();
+            ResultSet result = con.prepareStatement(trSql).executeQuery();
             if (result.next())
                 return result.getString(1);
         } catch (SQLException e) {
@@ -160,13 +160,13 @@ public class DBSqlServer implements Database {
         return null;
     }
 
-    //***************************
     public ArrayList<String> getSetname(int account_id) {
+        PreparedStatement pre;
         ArrayList<String> list = new ArrayList<String>();
         try {
             pre = con.prepareStatement("select distinct setname from querycondition where account_id=?");
             pre.setInt(1, account_id);
-            result = pre.executeQuery();
+            ResultSet result = pre.executeQuery();
             while (result.next()) {
                 list.add(result.getString(1));
             }
@@ -178,13 +178,13 @@ public class DBSqlServer implements Database {
 
     }
 
-    //**************************
     public String gettablename(String setname, int account_id) {
+        PreparedStatement pre;
         try {
             pre = con.prepareStatement("select adorn_name from tablename where table_id in (select distinct table_id from querycondition where setname=? and account_id=?)");
             pre.setString(1, setname);
             pre.setInt(2, account_id);
-            result = pre.executeQuery();
+            ResultSet result = pre.executeQuery();
             if (result.next())
                 return result.getString(1);
         } catch (SQLException e) {
@@ -193,7 +193,6 @@ public class DBSqlServer implements Database {
         return null;
     }
 
-    //**************************
     //列名 t 对应列的查询条件query 表名 tablename
     //TODO 这里有很多种方法
     public ResultSet getresultTable(ArrayList<String> column, ArrayList<String> query, int table_id) throws Exception {
@@ -222,13 +221,14 @@ public class DBSqlServer implements Database {
         return con.prepareStatement(sql.toString()).executeQuery();
     }
 
-    //*************************************
+    //true
     public String getcolumn(String column, int table_id) {
+        PreparedStatement pre;
         try {
             pre = con.prepareStatement("select column_name from  columnname where table_id=? and adorn_name=?");
             pre.setInt(1, table_id);
             pre.setString(2, column);
-            result = pre.executeQuery();
+            ResultSet result = pre.executeQuery();
             if (result.next()) {
                 return result.getString(1);
             }
@@ -238,27 +238,35 @@ public class DBSqlServer implements Database {
         return "wrong";
     }
 
-    //**************************
+    public static void main(String[] args) {
+        DBMySql db = new DBMySql();
+        db.connect();
+        int acount_id = db.logByAccount("xz", "1");
+        System.out.println(acount_id);
+    }
+
+    //true
     public int logByAccount(String userName, String password) {
-        int id;
+        System.out.println("userName=" + userName + " password=" + password);
+        PreparedStatement ps;
         try {
-            pre = con.prepareStatement("select account_id from account where name=? and password=?");
-            pre.setString(1, userName);
-            pre.setString(2, password);
-            result = pre.executeQuery();
-            if (result.next()) {
-                id = result.getInt(1);
+            ps = con.prepareStatement("select account_id from account where name=? and password=?");
+            ps.setString(1, userName);
+            ps.setString(2, password);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                int id = rs.getInt(1);
                 return id;
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
         return -1;
     }
 
-    //****************************************
+    //true
     public ArrayList<String> getTableList(int account_id) {
+        PreparedStatement pre;
         ArrayList<String> list = new ArrayList<String>();
         try {
             if (isRootAccount(account_id)) {
@@ -284,8 +292,9 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //******************************************
+    //    true
     public String[] getquerycondition(int account_id, int table_id, String setname, String columnname) {
+        PreparedStatement pre;
         String[] set = {"N", "", ""};
         try {
             String column_name = getcolumnname(table_id, columnname);
@@ -294,7 +303,7 @@ public class DBSqlServer implements Database {
             pre.setInt(2, table_id);
             pre.setString(3, column_name);
             pre.setString(4, setname);
-            result = pre.executeQuery();
+            ResultSet result = pre.executeQuery();
             if (result.next()) {
                 for (int i = 0; i < set.length; i++) {
                     set[i] = result.getString(i + 1);
@@ -307,7 +316,7 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //**************************************
+    //true
     public ArrayList<String> tranColumnlist(ArrayList<String> column, int table_id) {
         for (int i = 0; i < column.size(); i++) {
             column.set(i, getcolumn(column.get(i), table_id));
@@ -315,7 +324,7 @@ public class DBSqlServer implements Database {
         return column;
     }
 
-    //*******************************************
+    //true
     public ArrayList<ArrayList<String>> getGroup(int table_id, String hzx, String hzxsql, String tjx, String tjxsql) {
 
         String tablename = getUnadornTablenameById(table_id);
@@ -334,7 +343,7 @@ public class DBSqlServer implements Database {
         String sql = "select " + utjx + ", sum(" + uhzx + ") as " + hzx + "统计" + " from " + tablename + wheresql + " group by " + utjx;
         ArrayList<ArrayList<String>> data = new ArrayList<ArrayList<String>>();
         try {
-            result = con.prepareStatement(sql).executeQuery();
+            ResultSet result = con.prepareStatement(sql).executeQuery();
             while (result.next()) {
                 ArrayList<String> temp = new ArrayList<>();
                 temp.add(result.getString(1));
@@ -347,13 +356,14 @@ public class DBSqlServer implements Database {
         return data;
     }
 
-
+    //true
     public String getUnadornColumnByadorn(int table_id, String col) {
+        PreparedStatement pre;
         try {
             pre = con.prepareStatement("select column_name from  columnname where table_id=? and adorn_name=?");
             pre.setInt(1, table_id);
             pre.setString(2, col);
-            result = pre.executeQuery();
+            ResultSet result = pre.executeQuery();
             if (result.next()) return result.getString(1);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -361,12 +371,13 @@ public class DBSqlServer implements Database {
         return null;
     }
 
-    //***********************************
+    //true
     public String getUnadornTablenameById(int table_id) {
+        PreparedStatement pre;
         try {
             pre = con.prepareStatement("select table_name from tablename where table_id=?");
             pre.setInt(1, table_id);
-            result = pre.executeQuery();
+            ResultSet result = pre.executeQuery();
             if (result.next()) return result.getString(1);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -374,10 +385,11 @@ public class DBSqlServer implements Database {
         return null;
     }
 
-    //******************************************
+    //true
     public ArrayList<Integer> getRoleListByAccount(int account_id) {
         ArrayList<Integer> list = new ArrayList<>();
         try {
+            PreparedStatement pre = null;
             pre.setInt(1, account_id);
             pre = con.prepareStatement("select role_id from roleaccount where account_id=?");
             ResultSet result = pre.executeQuery();
@@ -392,8 +404,9 @@ public class DBSqlServer implements Database {
         return list;
     }
 
-    //**********************************************
+    //true
     public boolean hasSetname(int account_id, String name) {
+        PreparedStatement pre;
         try {
             pre = con.prepareStatement("select count(*) from querycondition  where account_id=? and setname=?");
             pre.setInt(1, account_id);
@@ -410,18 +423,18 @@ public class DBSqlServer implements Database {
         return false;
     }
 
-    //**
-    @Override
+    //true
     public boolean getTypeColumn(String column, int table_id) {
+        PreparedStatement pre;
         try {
-            pre = con.prepareStatement("  select t.name from sys.columns c INNER JOIN  sys.types t on c.system_type_id=t.system_type_id where object_id=?  and c.name=?");
+            pre = con.prepareStatement("  SELECT a.COLUMN_TYPE  FROM information_schema.COLUMNS a,tablename t WHERE a.table_name=t.table_name AND t.table_id=? AND a.COLUMN_NAME=?");
             pre.setInt(1, table_id);
             pre.setString(2, column);
             ResultSet result = pre.executeQuery();
             if (result.next()) {
                 String s = result.getString(1);
                 System.out.println("column=" + column + "   type=>" + s);
-                if (s.equalsIgnoreCase("int") || s.equalsIgnoreCase("double") || s.equalsIgnoreCase("decimal")) {
+                if (s.contains("int") || s.contains("double") || s.contains("decimal")) {
                     result.close();
                     return true;
                 }
@@ -434,8 +447,9 @@ public class DBSqlServer implements Database {
         return false;
     }
 
-    @Override
+    //true
     public String getColumnName(String s) {
+        PreparedStatement pre;
         try {
             pre = con.prepareStatement("  select COLUMN_NAME from columnname   where adorn_name=?");
             pre.setString(1, s);
@@ -446,28 +460,6 @@ public class DBSqlServer implements Database {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
-
         return null;
     }
-
-//    DBSqlServer() {
-//        String user = "sa";
-//        String password = "19961022lS";
-//        String address = "127.0.0.1";
-//        String databasename = "misaki";
-//        try {
-//            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");// 加载Oracle驱动程序
-//            String dbURL = "jdbc:sqlserver://" + address + ":1433;DatabaseName= " + databasename;
-//            Properties common = new Properties();
-//            common.put("user", user);
-//            common.put("password", password);
-//            con = DriverManager.getConnection(dbURL, common);
-//            System.out.println("数据库连接成功");
-//        } catch (Exception e) {
-//            System.out.println("数据库连接fail");
-//            System.exit(0);
-//            e.printStackTrace();
-//        }
-//    }
 }

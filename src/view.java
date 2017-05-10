@@ -1,3 +1,5 @@
+import org.jetbrains.annotations.NotNull;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -19,7 +21,7 @@ public class view extends JFrame {
     private JButton confirm;
     private JButton out;
 
-    private DatabaseConnect db;
+    private Database db;
     private ResultSet rs;
     private final setActionListener setlis = new setActionListener();
     private Vector<String> cmbTable;
@@ -38,7 +40,6 @@ public class view extends JFrame {
         Dimension screensize = Toolkit.getDefaultToolkit().getScreenSize();
         screen_width = (int) screensize.getWidth();
         screen_height = (int) screensize.getHeight();
-
         if (log()) {
             initFrame();
             addListener();
@@ -51,36 +52,22 @@ public class view extends JFrame {
     }
 
     private Boolean log() {
-        try {
-
-            String[] lo = RegistUtil.read();
-            if (lo[0].equals("Oracle")) {
-                db = new DBOracle();
-                if (!db.connect(lo[1], lo[2], lo[3], lo[4])) {
-                    return false;
-                }
-            } else {
-                db = new DBSqlServer();
-                if (!db.connect(lo[1], lo[2], lo[3], lo[4])) {
-                    return false;
-                }
+        db = new DBFactory().createDB(RegistUtil.read()[0]);
+        db.connect();
+        logDialog log = new logDialog(screen_width / 2 - (log_width / 2), screen_height / 2 - (log_height / 2), log_width, log_height);
+        int state = log.showdia(this, "登录");
+        if (state == 1) {
+            try {
+                account_id = db.logByAccount(log.getUserName(), log.getPassword().toString());
+            } catch (SQLException e) {
+                System.out.println("   ----------------   fail   ----------------  ");
             }
-            logDialog log = new logDialog(screen_width / 2 - (log_width / 2), screen_height / 2 - (log_height / 2), log_width, log_height);
-
-            int state = log.showdia(this, "登录");
-            if (state == 1) {
-                int id = db.logByAccount(log.getUserName(), log.getPassword().toString());
-                if (id != -1) {
-                    account_id = id;
-                } else {
-                    return false;
-                }
-            } else {
-                System.exit(0);
+            System.out.println("---   log    -     account_id=" + account_id);
+            if (account_id == -1) {
+                return false;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
+        } else {
+            System.exit(0);
         }
         return true;
     }
@@ -208,7 +195,6 @@ public class view extends JFrame {
         save.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent arg0) {
                 String name = JOptionPane.showInputDialog("请输入设置名");
-                System.out.println(db.hasSetname(account_id, name) + ":" + name + ":" + account_id);
                 if (name != null && !name.trim().equals("") && !db.hasSetname(account_id, name)) {
                     Component[] comp = contentPanel.getComponents();
                     if (comp.length == 0) {
@@ -242,10 +228,9 @@ public class view extends JFrame {
                     JOptionPane.showMessageDialog(null, "当前没有可以删除的设置", "Warnning", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-
-
                 db.deletequerycondition(account_id, set.getSelectedItem().toString());
-                set.removeActionListener(setlis);
+                //停止监听
+//                set.removeActionListener(setlis);
                 set.removeItem(set.getSelectedItem().toString());
                 contentPanel.removeAll();
                 contentPanel.updateUI();
@@ -372,6 +357,7 @@ public class view extends JFrame {
             foot.add(new JLabel("统计方式"));
             tjfs = new JComboBox<>();
             tjfs.setPreferredSize(new Dimension(100, 20));
+            tjfs.addItem("汇总");
             tjfs.addItem("和");
             tjfs.addItem("平均");
             tjfs.addItem("最大");
@@ -385,11 +371,13 @@ public class view extends JFrame {
             cz.addItem("请选择");
             tj.addItem("请选择");
             for (int i = 0; i < columnt.size(); i++) {
-                if (db.getTypeColumn(columnt.get(i).toString(), table_id))
+                boolean flag = db.getTypeColumn(db.getColumnName(columnt.get(i).toString()), table_id);
+                if (flag) {
                     cz.addItem(columnt.get(i).toString());
+                }
                 tj.addItem(columnt.get(i).toString());
             }
-            System.out.println("cz.getItemCount():" + cz.getItemCount());
+            tj.addItem("ALL");
             if (cz.getItemCount() == 1) {
                 cz.removeAllItems();
                 tj.removeAllItems();
@@ -422,105 +410,254 @@ public class view extends JFrame {
                             && tj.getSelectedIndex() == 0) {
                         return;
                     }
+                    String tjVal = tj.getSelectedItem().toString();
+                    String czVal = cz.getSelectedItem().toString();
+                    ArrayList<String> col = new ArrayList<>();
+                    col.add(tjVal);
+                    String tjfsVal = tjfs.getSelectedItem().toString();
+                    switch (tjfsVal) {
+                        case "汇总":
+                            col.add(czVal + "汇总");
+                            count(col);
+                            break;
+                        case "和":
+                            col.add(czVal + "和");
+                            sum(col);
+                            break;
+                        case "平均":
+                            col.add(czVal + "平均值");
+                            avg(col);
+                            break;
+                        case "最大":
+                            col.add(czVal + "最大值");
+                            max(col);
+                            break;
+                        case "最小":
+                            col.add(czVal + "最小值");
+                            min(col);
+                            break;
+                    }
+                }
 
-                    if (cz.getSelectedIndex() == 0 && tj.getSelectedIndex() != 0) {
-                        String tjVal = tj.getSelectedItem().toString();
-                        ArrayList<String> col = new ArrayList<>();
-                        col.add("sex");
-                        col.add("汇总");
-
-                        ArrayList<ArrayList<String>> data = new ArrayList<>();
+                private void min(ArrayList<String> col) {
+                    String key = col.get(1).substring(0, col.get(1).indexOf("最小值"));
+                    ArrayList<ArrayList<String>> data = new ArrayList<>();
+                    if (!col.get(0).equals("ALL")) {
                         for (ArrayList<String> val : tabledata) {
                             boolean flag = true;
                             for (ArrayList<String> l : data) {
-                                if (l.get(0).equals(val.get(columnt.indexOf(tjVal))))
+                                if (l.get(0).equals(val.get(columnt.indexOf(col.get(0)))))
                                     flag = false;
                             }
-
                             if (!flag) {
                                 for (ArrayList<String> l : data) {
-                                    if (l.get(0).equals(val.get(columnt.indexOf(tjVal)))) {
-                                        l.set(1, String.valueOf(Integer.parseInt(l.get(1)) + 1));
+                                    if (val.get(columnt.indexOf(key)) != null && !val.get(columnt.indexOf(key)).trim().equals("")) {
+                                        if (l.get(0).equals(val.get(columnt.indexOf(col.get(0))))) {
+                                            double num = Math.min(Double.parseDouble(l.get(1)), Double.parseDouble(val.get(columnt.indexOf(key))));
+                                            l.set(1, String.valueOf(num));
+                                        }
                                     }
                                 }
                             } else {
-                                ArrayList<String> l = new ArrayList<>();
-                                l.add(val.get(columnt.indexOf(tjVal)));
-                                l.add(1 + "");
-                                data.add(l);
+                                ArrayList<String> list = new ArrayList<>();
+                                list.add(val.get(columnt.indexOf(col.get(0))));
+                                list.add(val.get(columnt.indexOf(key)));
+                                data.add(list);
                             }
                         }
-                        table = new JTable(new groupTable(col, data));
-                        remove(jsc);
-                        jsc = new JScrollPane(table);
-                        add(jsc, BorderLayout.CENTER);
-                        resultFrame.this.setVisible(true);
+                    } else {
+                        ArrayList<String> list = new ArrayList<>();
+                        list.add(key);
+                        double num = 999999999;
+                        for (ArrayList<String> val : tabledata) {
+                            num = Math.min(Double.parseDouble(val.get(columnt.indexOf(list.get(0)))), num);
+                        }
+                        list.add(num + "");
+                        data.add(list);
+                    }
+                    table = new JTable(new groupTable(col, data));
+                    remove(jsc);
+                    jsc = new JScrollPane(table);
+                    add(jsc, BorderLayout.CENTER);
+                    resultFrame.this.setVisible(true);
+                }
+
+                private void max(ArrayList<String> col) {
+                    String key = col.get(1).substring(0, col.get(1).indexOf("最大值"));
+                    ArrayList<ArrayList<String>> data = new ArrayList<>();
+                    if (!col.get(0).equals("ALL")) {
+                        for (ArrayList<String> val : tabledata) {
+                            boolean flag = true;
+                            for (ArrayList<String> l : data) {
+                                if (l.get(0).equals(val.get(columnt.indexOf(col.get(0)))))
+                                    flag = false;
+                            }
+                            if (!flag) {
+                                for (ArrayList<String> l : data) {
+                                    if (val.get(columnt.indexOf(key)) != null && !val.get(columnt.indexOf(key)).trim().equals("")) {
+                                        if (l.get(0).equals(val.get(columnt.indexOf(col.get(0))))) {
+                                            double num = Math.max(Double.parseDouble(l.get(1)), Double.parseDouble(val.get(columnt.indexOf(key))));
+                                            l.set(1, String.valueOf(num));
+                                        }
+                                    }
+                                }
+                            } else {
+                                ArrayList<String> list = new ArrayList<>();
+                                list.add(val.get(columnt.indexOf(col.get(0))));
+                                list.add(val.get(columnt.indexOf(key)));
+                                data.add(list);
+                            }
+                        }
+                    } else {
+                        ArrayList<String> list = new ArrayList<>();
+                        list.add(key);
+                        double num = 0;
+                        for (ArrayList<String> val : tabledata) {
+                            num = Math.max(Double.parseDouble(val.get(columnt.indexOf(list.get(0)))), num);
+                        }
+                        list.add(num + "");
+                        data.add(list);
+                    }
+
+                    table = new JTable(new groupTable(col, data));
+                    remove(jsc);
+                    jsc = new JScrollPane(table);
+                    add(jsc, BorderLayout.CENTER);
+                    resultFrame.this.setVisible(true);
+                }
+
+                private void avg(ArrayList<String> col) {
+                    String key = col.get(1).substring(0, col.get(1).indexOf("平均值"));
+                    ArrayList<ArrayList<String>> data = new ArrayList<>();
+                    ArrayList<Integer> count = new ArrayList<>();
+                    if (!col.get(0).equals("ALL")) {
+                        for (ArrayList<String> val : tabledata) {
+                            boolean flag = true;
+                            for (ArrayList<String> l : data) {
+                                if (l.get(0).equals(val.get(columnt.indexOf(col.get(0)))))
+                                    flag = false;
+                            }
+                            if (!flag) {
+                                for (ArrayList<String> l : data) {
+                                    if (val.get(columnt.indexOf(key)) != null && !val.get(columnt.indexOf(key)).trim().equals("")) {
+                                        if (l.get(0).equals(val.get(columnt.indexOf(col.get(0))))) {
+                                            double sum = Double.parseDouble(l.get(1)) + Double.parseDouble(val.get(columnt.indexOf(key)));
+                                            l.set(1, String.valueOf(sum));
+                                            count.set(data.indexOf(l), count.get(data.indexOf(l)) + 1);
+                                        }
+                                    }
+                                }
+                            } else {
+                                ArrayList<String> list = new ArrayList<>();
+                                list.add(val.get(columnt.indexOf(col.get(0))));
+                                list.add(val.get(columnt.indexOf(key)));
+                                count.add(1);
+                                data.add(list);
+                            }
+                        }
+                        for (int i = 0; i < data.size(); i++) {
+                            data.get(i).set(1, String.valueOf(
+                                    (Double.parseDouble(data.get(i).get(1)) * 1.0) / count.get(i)
+                            ));
+                        }
+                    } else {
+                        ArrayList<String> list = new ArrayList<>();
+                        list.add(key);
+                        double sum = 0;
+                        for (ArrayList<String> val : tabledata) {
+                            sum += Double.parseDouble(val.get(columnt.indexOf(list.get(0))));
+                        }
+                        list.add(sum * 1.0 / tabledata.size() + "");
+                        data.add(list);
+                    }
+
+                    table = new JTable(new groupTable(col, data));
+                    remove(jsc);
+                    jsc = new JScrollPane(table);
+                    add(jsc, BorderLayout.CENTER);
+                    resultFrame.this.setVisible(true);
+
+                }
+
+                private void sum(ArrayList<String> col) {
+                    String key = col.get(1).substring(0, col.get(1).indexOf("和"));
+                    ArrayList<ArrayList<String>> data = new ArrayList<>();
+                    if (!col.get(0).equals("ALL")) {
+                        for (ArrayList<String> val : tabledata) {
+                            boolean flag = true;
+                            for (ArrayList<String> l : data) {
+                                if (l.get(0).equals(val.get(columnt.indexOf(col.get(0)))))
+                                    flag = false;
+                            }
+                            if (!flag) {
+                                for (ArrayList<String> l : data) {
+                                    if (l.get(0).equals(val.get(columnt.indexOf(col.get(0))))) {
+                                        if (val.get(columnt.indexOf(key)) != null || !val.get(columnt.indexOf(key)).trim().equals("")) {
+                                            double sum = Double.parseDouble(l.get(1)) + Double.parseDouble(val.get(columnt.indexOf(key)));
+                                            l.set(1, String.valueOf(sum));
+                                        }
+                                    }
+                                }
+                            } else {
+                                ArrayList<String> list = new ArrayList<>();
+                                list.add(val.get(columnt.indexOf(col.get(0))));
+                                list.add(val.get(columnt.indexOf(key)));
+                                data.add(list);
+                            }
+                        }
 
                     } else {
+                        ArrayList<String> list = new ArrayList<>();
+                        list.add(key);
+                        double sum = 0;
+                        for (ArrayList<String> val : tabledata) {
+                            sum += Double.parseDouble(val.get(columnt.indexOf(list.get(0))));
+                        }
+                        list.add(sum + "");
+                        data.add(list);
+                    }
 
-                        String tjVal = tj.getSelectedItem().toString();
-                        ArrayList<String> col = new ArrayList<>();
-                        col.add(tjVal);
-                        col.add(tjVal+"汇总");
+                    table = new JTable(new groupTable(col, data));
+                    remove(jsc);
+                    jsc = new JScrollPane(table);
+                    add(jsc, BorderLayout.CENTER);
+                    resultFrame.this.setVisible(true);
 
-                        ArrayList<ArrayList<String>> data = new ArrayList<>();
+                }
+
+                private void count(ArrayList<String> col) {
+                    ArrayList<ArrayList<String>> data = new ArrayList<>();
+                    if (!col.get(0).equals("ALL")) {
                         for (ArrayList<String> val : tabledata) {
                             boolean flag = true;
                             for (ArrayList<String> l : data) {
-                                if (l.get(0).equals(val.get(columnt.indexOf(tjVal))))
+                                if (l.get(0).equals(val.get(columnt.indexOf(col.get(0)))))
                                     flag = false;
                             }
-
                             if (!flag) {
                                 for (ArrayList<String> l : data) {
-                                    if (l.get(0).equals(val.get(columnt.indexOf(tjVal)))) {
+                                    if (l.get(0).equals(val.get(columnt.indexOf(col.get(0))))) {
                                         l.set(1, String.valueOf(Integer.parseInt(l.get(1)) + 1));
                                     }
                                 }
                             } else {
                                 ArrayList<String> l = new ArrayList<>();
-                                l.add(val.get(columnt.indexOf(tjVal)));
+                                l.add(val.get(columnt.indexOf(col.get(0))));
                                 l.add(1 + "");
                                 data.add(l);
                             }
                         }
-                        table = new JTable(new groupTable(col, data));
-                        remove(jsc);
-                        jsc = new JScrollPane(table);
-                        add(jsc, BorderLayout.CENTER);
-                        resultFrame.this.setVisible(true);
+                    } else {
+                        ArrayList<String> list = new ArrayList<>();
+                        list.add("ALL");
+                        list.add(tabledata.size() + "");
+                        data.add(list);
                     }
-//                    try {
-//                        String hzx = cz.getSelectedItem().toString();
-//                        String tjx = tj.getSelectedItem().toString();
-//                        String hzxsql = "";
-//                        String tjxsql = "";
-//                        int count = 0;
-//                        for (int i = 0; i < columnt.size(); i++) {
-//                            if (count == 2) break;
-//                            if (columnt.get(i).equals(hzx)) {
-//                                hzxsql = query.get(i);
-//                                count++;
-//                            } else if (columnt.get(i).equals(tjx)) {
-//                                tjxsql = query.get(i);
-//                                count++;
-//                            }
-//                        }
-                        //*---------------------------------需要处理
-//                        ArrayList<ArrayList<String>> data = db.getGroup(table_id, hzx, hzxsql, tjx, tjxsql);
-//                        ArrayList<String> col = new ArrayList<>();
-//                        col.add(tjx);
-//                        col.add(hzx + "汇总");
-//
-//                        table = new JTable(new groupTable(col, data));
-//                        remove(jsc);
-//                        jsc = new JScrollPane(table);
-//                        add(jsc, BorderLayout.CENTER);
-//                        resultFrame.this.setVisible(true);
-//
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                    }
+                    table = new JTable(new groupTable(col, data));
+                    remove(jsc);
+                    jsc = new JScrollPane(table);
+                    add(jsc, BorderLayout.CENTER);
+                    resultFrame.this.setVisible(true);
                 }
             });
 
@@ -546,9 +683,7 @@ public class view extends JFrame {
         public void actionPerformed(ActionEvent arg0) {
             try {
                 String setname = (String) set.getSelectedItem();
-                System.out.println("选择配置的条件：setname= " + setname + "   account_id= " + account_id);
                 String tablename = db.gettablename(setname, account_id);
-                System.out.println("选择配置的结果：tablename= " + tablename);
                 table.setSelectedItem(tablename);
                 Component[] com = contentPanel.getComponents();
                 for (int i = 0; i < com.length; i++) {
@@ -557,7 +692,6 @@ public class view extends JFrame {
                     item.select(set[0].equals("Y") ? true : false);
                     item.setcon1(set[1]);
                     item.setcon2(set[2]);
-                    //System.out.println(set[0]+set[1]+set[2]);
                 }
                 contentPanel.updateUI();
             } catch (SQLException e) {
@@ -566,4 +700,4 @@ public class view extends JFrame {
 
         }
     }
-} 
+}
